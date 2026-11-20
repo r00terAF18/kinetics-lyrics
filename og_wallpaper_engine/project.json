@@ -1,0 +1,740 @@
+{
+	"contentrating" : "Everyone",
+	"description" : "Live kinetic typography for whatever you're playing: Spotify or any media player Wallpaper Engine can see. The lyrics are synced and fly in word by word, styled to match the song.\n\nWHAT IT DOES\n- Synced lyrics, fetched automatically for the song you're playing (LRCLIB and NetEase)\n- 38 layouts and 22 transition styles, chosen per line so a song never looks the same twice\n- Camera modes: Follow (the camera travels across a canvas of lines, now and then diving through the hole of a letter into the next line), Stream (the lyrics run as one continuous path that goes sideways, drops down, spirals onto a flywheel, crescendos and slams), and Auto (mixes them by song section)\n- Light and text that react to the music: bass, kicks and drops\n- Song-structure aware: choruses, verses, bridges and drops each get their own treatment\n- Backgrounds: blurred album art, colour gradient, solid, custom colour, or animated (flowing colours / drifting album art)\n- Multi-monitor layouts, an idle clock when nothing is playing, and an invert option for transparent displays (Lucid Panel)\n- Self-healing: recovers by itself from network drops, lost audio and song changes\n\nSETTINGS WORTH TRYING\n- Camera: Auto / Follow / Stream / Edit moves / Subtle / Off\n- Layout and Transition: leave on Auto/Mixed, or lock one you like\n- Lyrics offset: nudge it if a song's lyrics run early or late, or hover the bottom-right corner for « earlier / later » per song and ⟳ to reload\n- Raise song info: lifts the now-playing card above your taskbar\n\nTIPS\n- On multi-monitor setups, Wallpaper Engine > Settings > Performance > FPS 30 roughly halves the GPU use and still looks smooth\n- Lyrics come from public databases, so a few songs have no synced lyrics; the wallpaper shows the song title instead\n\nMade by Il-Kikkinu. Bugs or ideas? Leave a comment.",
+	"file" : "index.html",
+	"general" : 
+	{
+		"properties" : 
+		{
+			"accent" : 
+			{
+				"condition" : "autoaccent.value == false",
+				"index" : 15,
+				"order" : 115,
+				"text" : "Accent colour (when auto is off)",
+				"type" : "color",
+				"value" : "1 0.3 0.43"
+			},
+			"autoaccent" : 
+			{
+				"index" : 14,
+				"order" : 114,
+				"text" : "Accent from album art",
+				"type" : "bool",
+				"value" : true
+			},
+			"autosync" : 
+			{
+				"index" : 20,
+				"order" : 120,
+				"text" : "Auto-sync to vocals (experimental)",
+				"type" : "bool",
+				"value" : false
+			},
+			"bgcolor" : 
+			{
+				"condition" : "bgmode.value == 'color'",
+				"index" : 12,
+				"order" : 112,
+				"text" : "Background colour (for \"Custom colour\")",
+				"type" : "color",
+				"value" : "0.06 0.06 0.08"
+			},
+			"bgmode" : 
+			{
+				"index" : 11,
+				"options" : 
+				[
+					{
+						"label" : "Album art (blurred)",
+						"value" : "art"
+					},
+					{
+						"label" : "Album colour gradient",
+						"value" : "gradient"
+					},
+					{
+						"label" : "Solid black",
+						"value" : "solid"
+					},
+					{
+						"label" : "Custom colour",
+						"value" : "color"
+					},
+					{
+						"label" : "Animated — flowing colours",
+						"value" : "anim"
+					},
+					{
+						"label" : "Animated — drifting album art",
+						"value" : "drift"
+					}
+				],
+				"order" : 111,
+				"text" : "Background",
+				"type" : "combo",
+				"value" : "art"
+			},
+			"camamount" : 
+			{
+				"fraction" : false,
+				"index" : 9,
+				"max" : 100,
+				"min" : 0,
+				"order" : 109,
+				"text" : "Camera amount (how often it moves)",
+				"type" : "slider",
+				"value" : 50
+			},
+			"camera" : 
+			{
+				"index" : 8,
+				"options" : 
+				[
+					{
+						"label" : "Auto — Follow, with the odd verse as a Stream",
+						"value" : "auto"
+					},
+					{
+						"label" : "Follow — camera travels a canvas of lines (and sometimes dives through a letter)",
+						"value" : "follow"
+					},
+					{
+						"label" : "Stream — lyrics run as one continuous path (sideways, down, wave, flywheel…)",
+						"value" : "stream"
+					},
+					{
+						"label" : "Edit moves — whips, spins, punch-ins per line",
+						"value" : "tiktok"
+					},
+					{
+						"label" : "Edit moves (subtle)",
+						"value" : "subtle"
+					},
+					{
+						"label" : "Off",
+						"value" : "off"
+					}
+				],
+				"order" : 108,
+				"text" : "Camera",
+				"type" : "combo",
+				"value" : "auto"
+			},
+			"carry" : 
+			{
+				"index" : 6,
+				"order" : 106,
+				"text" : "Shared words travel between lines",
+				"type" : "bool",
+				"value" : true
+			},
+			"chaos" : 
+			{
+				"fraction" : false,
+				"index" : 4,
+				"max" : 100,
+				"min" : 0,
+				"order" : 104,
+				"text" : "Chaos (share of wild layouts)",
+				"type" : "slider",
+				"value" : 35
+			},
+			"choreo" : 
+			{
+				"index" : 5,
+				"order" : 105,
+				"text" : "Song choreography (verse / chorus / bridge)",
+				"type" : "bool",
+				"value" : true
+			},
+			"clock24" : 
+			{
+				"condition" : "idleclock.value == true",
+				"index" : 30,
+				"order" : 130,
+				"text" : "24-hour clock",
+				"type" : "bool",
+				"value" : true
+			},
+			"dim" : 
+			{
+				"fraction" : false,
+				"index" : 13,
+				"max" : 95,
+				"min" : 0,
+				"order" : 113,
+				"text" : "Background dim",
+				"type" : "slider",
+				"value" : 55
+			},
+			"flashes" : 
+			{
+				"index" : 23,
+				"order" : 123,
+				"text" : "Light bursts + swells",
+				"type" : "bool",
+				"value" : true
+			},
+			"g_audio" : 
+			{
+				"index" : 21,
+				"order" : 121,
+				"text" : "Music reaction + mood",
+				"type" : "group"
+			},
+			"g_camera" : 
+			{
+				"index" : 7,
+				"order" : 107,
+				"text" : "Camera",
+				"type" : "group"
+			},
+			"g_colour" : 
+			{
+				"index" : 10,
+				"order" : 110,
+				"text" : "Background + colours",
+				"type" : "group"
+			},
+			"g_info" : 
+			{
+				"index" : 26,
+				"order" : 126,
+				"text" : "Song info + idle clock",
+				"type" : "group"
+			},
+			"g_lyrics" : 
+			{
+				"index" : 17,
+				"order" : 117,
+				"text" : "Lyrics + sync",
+				"type" : "group"
+			},
+			"g_perf" : 
+			{
+				"index" : 36,
+				"order" : 136,
+				"text" : "Performance",
+				"type" : "group"
+			},
+			"g_screens" : 
+			{
+				"index" : 31,
+				"order" : 131,
+				"text" : "Screens",
+				"type" : "group"
+			},
+			"g_style" : 
+			{
+				"index" : 0,
+				"order" : 100,
+				"text" : "Style",
+				"type" : "group"
+			},
+			"hudlift" : 
+			{
+				"condition" : "showinfo.value == true",
+				"fraction" : false,
+				"index" : 28,
+				"max" : 20,
+				"min" : 0,
+				"order" : 128,
+				"precision" : 0,
+				"step" : 1,
+				"text" : "Raise song info (e.g. above the taskbar)",
+				"type" : "slider",
+				"value" : 0
+			},
+			"idleclock" : 
+			{
+				"index" : 29,
+				"order" : 129,
+				"text" : "Show clock when nothing is playing",
+				"type" : "bool",
+				"value" : true
+			},
+			"invert" : 
+			{
+				"index" : 16,
+				"order" : 116,
+				"text" : "Invert colours (transparent displays, Lucid Panel)",
+				"type" : "bool",
+				"value" : false
+			},
+			"lastfmkey" : 
+			{
+				"condition" : "moodon.value == true",
+				"index" : 25,
+				"order" : 125,
+				"text" : "Last.fm API key (optional, mood tags)",
+				"type" : "textinput",
+				"value" : ""
+			},
+			"layout" : 
+			{
+				"index" : 2,
+				"options" : 
+				[
+					{
+						"label" : "Auto — chosen by the line (same line, same look)",
+						"value" : "auto"
+					},
+					{
+						"label" : "Flow — big words big, little words small",
+						"value" : "flow"
+					},
+					{
+						"label" : "Stack — justified block",
+						"value" : "stack"
+					},
+					{
+						"label" : "Hero — one giant word",
+						"value" : "hero"
+					},
+					{
+						"label" : "Staircase — steps down",
+						"value" : "stair"
+					},
+					{
+						"label" : "Column — words stretched to one width",
+						"value" : "column"
+					},
+					{
+						"label" : "Split — top-left / bottom-right",
+						"value" : "split"
+					},
+					{
+						"label" : "Grid — tidy reading-order grid",
+						"value" : "grid"
+					},
+					{
+						"label" : "Diagonal — tilted with echoes",
+						"value" : "diag"
+					},
+					{
+						"label" : "Centered — one clean line",
+						"value" : "center"
+					},
+					{
+						"label" : "Zigzag — horizontal / vertical alternating",
+						"value" : "zigzag"
+					},
+					{
+						"label" : "Cross — longest word runs down the middle",
+						"value" : "cross"
+					},
+					{
+						"label" : "Frame — big word framed by the rest",
+						"value" : "frame"
+					},
+					{
+						"label" : "Tower — giant vertical word beside a stack",
+						"value" : "tower"
+					},
+					{
+						"label" : "Chaos — mixed angles, tidy",
+						"value" : "chaos"
+					},
+					{
+						"label" : "Arc — the line bends along a curve",
+						"value" : "arc"
+					},
+					{
+						"label" : "Pyramid — narrow tip widening into a base",
+						"value" : "pyramid"
+					},
+					{
+						"label" : "Big initial — giant first letter beside the line",
+						"value" : "initial"
+					},
+					{
+						"label" : "Caps — magazine-cover rows, mixed faces",
+						"value" : "caps"
+					},
+					{
+						"label" : "Climb — words step down the screen, growing as they go",
+						"value" : "climb"
+					},
+					{
+						"label" : "Wave — one row riding a gentle wave",
+						"value" : "wave"
+					},
+					{
+						"label" : "Sandwich — first and last word huge, the rest small between",
+						"value" : "sandwich"
+					},
+					{
+						"label" : "Billboard — key word huge and faint behind the line",
+						"value" : "billboard"
+					},
+					{
+						"label" : "Spiral — the line winds inward",
+						"value" : "spiral"
+					},
+					{
+						"label" : "Corner — along the top, then down the right edge",
+						"value" : "corner"
+					},
+					{
+						"label" : "Echo — the line three times, growing",
+						"value" : "echo"
+					},
+					{
+						"label" : "Mirror — the line with a faded reflection",
+						"value" : "mirror"
+					},
+					{
+						"label" : "Quote — serif text framed by giant quote marks",
+						"value" : "quote"
+					},
+					{
+						"label" : "Typewriter — spaced mono text with a cursor",
+						"value" : "typewriter"
+					},
+					{
+						"label" : "Headline — small kicker, giant key word, small subline",
+						"value" : "headline"
+					},
+					{
+						"label" : "Pillars — two vertical columns",
+						"value" : "pillars"
+					},
+					{
+						"label" : "Banners — words hanging like flags",
+						"value" : "banners"
+					},
+					{
+						"label" : "Fan — words radiating like rays",
+						"value" : "fan"
+					},
+					{
+						"label" : "Ransom — every word a different face, size and tilt",
+						"value" : "ransom"
+					},
+					{
+						"label" : "Tilt — stacked rows leaning left and right",
+						"value" : "tilt"
+					},
+					{
+						"label" : "Bookends — first and last word upright at the edges",
+						"value" : "bookends"
+					},
+					{
+						"label" : "Diamond — rows widen then narrow",
+						"value" : "diamond"
+					},
+					{
+						"label" : "Ring — first word centred, the rest around it",
+						"value" : "ring"
+					},
+					{
+						"label" : "Classic random (old behaviour)",
+						"value" : "classic"
+					}
+				],
+				"order" : 102,
+				"text" : "Word layout",
+				"type" : "combo",
+				"value" : "auto"
+			},
+			"layoutmode" : 
+			{
+				"index" : 32,
+				"options" : 
+				[
+					{
+						"label" : "One scene across my screens",
+						"value" : "multi"
+					},
+					{
+						"label" : "Single screen",
+						"value" : "single"
+					}
+				],
+				"order" : 132,
+				"text" : "Screen layout",
+				"type" : "combo",
+				"value" : "multi"
+			},
+			"lowpower" : 
+			{
+				"index" : 37,
+				"order" : 137,
+				"text" : "Low-power mode (laptops)",
+				"type" : "bool",
+				"value" : false
+			},
+			"monitors" : 
+			{
+				"condition" : "layoutmode.value == 'multi'",
+				"index" : 34,
+				"order" : 134,
+				"text" : "Screens (WxH@X,Y — :main for the main one, :off to skip)",
+				"type" : "textinput",
+				"value" : ""
+			},
+			"moodon" : 
+			{
+				"index" : 24,
+				"order" : 124,
+				"text" : "Mood-driven style (tempo, tags, energy)",
+				"type" : "bool",
+				"value" : true
+			},
+			"offset" : 
+			{
+				"fraction" : false,
+				"index" : 19,
+				"max" : 1500,
+				"min" : -1500,
+				"order" : 119,
+				"text" : "Global lyrics offset (ms, + = earlier)",
+				"type" : "slider",
+				"value" : 0
+			},
+			"preset" : 
+			{
+				"index" : 1,
+				"options" : 
+				[
+					{
+						"label" : "Custom (use the settings below)",
+						"value" : "custom"
+					},
+					{
+						"label" : "Minimal",
+						"value" : "minimal"
+					},
+					{
+						"label" : "Calm",
+						"value" : "calm"
+					},
+					{
+						"label" : "Balanced",
+						"value" : "balanced"
+					},
+					{
+						"label" : "Hype",
+						"value" : "hype"
+					},
+					{
+						"label" : "Chaos",
+						"value" : "chaos"
+					}
+				],
+				"order" : 101,
+				"text" : "Style preset",
+				"type" : "combo",
+				"value" : "custom"
+			},
+			"provider" : 
+			{
+				"index" : 18,
+				"options" : 
+				[
+					{
+						"label" : "Auto — best match from all",
+						"value" : "auto"
+					},
+					{
+						"label" : "LRCLIB",
+						"value" : "lrclib"
+					},
+					{
+						"label" : "NetEase",
+						"value" : "netease"
+					}
+				],
+				"order" : 118,
+				"text" : "Lyrics source",
+				"type" : "combo",
+				"value" : "auto"
+			},
+			"reactivity" : 
+			{
+				"fraction" : false,
+				"index" : 22,
+				"max" : 100,
+				"min" : 0,
+				"order" : 122,
+				"text" : "Beat reactivity",
+				"type" : "slider",
+				"value" : 60
+			},
+			"role" : 
+			{
+				"condition" : "layoutmode.value == 'single'",
+				"index" : 33,
+				"options" : 
+				[
+					{
+						"label" : "Main — kinetic compositions",
+						"value" : "main"
+					},
+					{
+						"label" : "Portrait — vertical lyric feed",
+						"value" : "feed"
+					},
+					{
+						"label" : "Side — now playing + next line",
+						"value" : "side"
+					}
+				],
+				"order" : 133,
+				"text" : "Single screen role",
+				"type" : "combo",
+				"value" : "main"
+			},
+			"schemecolor" : 
+			{
+				"order" : 0,
+				"text" : "ui_browse_properties_scheme_color",
+				"type" : "color",
+				"value" : "0 0 0"
+			},
+			"showinfo" : 
+			{
+				"index" : 27,
+				"order" : 127,
+				"text" : "Show song info",
+				"type" : "bool",
+				"value" : true
+			},
+			"showscreens" : 
+			{
+				"index" : 35,
+				"order" : 135,
+				"text" : "Show screen outlines + diagnostics",
+				"type" : "bool",
+				"value" : false
+			},
+			"transition" : 
+			{
+				"index" : 3,
+				"options" : 
+				[
+					{
+						"label" : "Mixed — rotate through all",
+						"value" : "mixed"
+					},
+					{
+						"label" : "Energetic mix",
+						"value" : "energetic"
+					},
+					{
+						"label" : "Smooth mix",
+						"value" : "smooth"
+					},
+					{
+						"label" : "Letters mix — letter-by-letter only",
+						"value" : "letters"
+					},
+					{
+						"label" : "Collide — words smash together and burst into place",
+						"value" : "collide"
+					},
+					{
+						"label" : "Gravity — old words fall away, new ones land",
+						"value" : "gravity"
+					},
+					{
+						"label" : "Slam — fly in from the sides",
+						"value" : "slam"
+					},
+					{
+						"label" : "Drop — fall in with a bounce",
+						"value" : "drop"
+					},
+					{
+						"label" : "Zoom — punch in from huge",
+						"value" : "zoom"
+					},
+					{
+						"label" : "Spin — whirl into place",
+						"value" : "spin"
+					},
+					{
+						"label" : "Pop — springy scale-up",
+						"value" : "pop"
+					},
+					{
+						"label" : "Wipe — reveal left to right",
+						"value" : "wipe"
+					},
+					{
+						"label" : "Rise — slide up from a mask",
+						"value" : "rise"
+					},
+					{
+						"label" : "Fade — soft and slow",
+						"value" : "fade"
+					},
+					{
+						"label" : "Flip — tips forward like a flap",
+						"value" : "flip"
+					},
+					{
+						"label" : "Swing — opens like a door",
+						"value" : "swing"
+					},
+					{
+						"label" : "Stretch — whips in squashed wide",
+						"value" : "stretch"
+					},
+					{
+						"label" : "Squash — pops up from flat",
+						"value" : "squash"
+					},
+					{
+						"label" : "Rubber — elastic wobble",
+						"value" : "rubber"
+					},
+					{
+						"label" : "Skew — slides in leaning hard",
+						"value" : "skew"
+					},
+					{
+						"label" : "Fly — each word from a different direction",
+						"value" : "fly"
+					},
+					{
+						"label" : "Orbit — swings in around the centre",
+						"value" : "orbit"
+					},
+					{
+						"label" : "Split — opens from the centre",
+						"value" : "split"
+					},
+					{
+						"label" : "Iris — circular reveal",
+						"value" : "iris"
+					},
+					{
+						"label" : "Cascade — letters drop in one by one",
+						"value" : "cascade"
+					},
+					{
+						"label" : "Wave — letters ripple up",
+						"value" : "wave"
+					}
+				],
+				"order" : 103,
+				"text" : "Transition style",
+				"type" : "combo",
+				"value" : "mixed"
+			}
+		},
+		"supportsaudioprocessing" : true
+	},
+	"preview" : "preview.gif",
+	"ratingsex" : "none",
+	"ratingviolence" : "none",
+	"tags" : [ "Music" ],
+	"title" : "Kinetic Lyrics",
+	"type" : "web",
+	"version" : 7,
+	"visibility" : "public",
+	"workshopid" : "3837239839",
+	"workshopurl" : "steam://url/CommunityFilePage/3837239839"
+}
