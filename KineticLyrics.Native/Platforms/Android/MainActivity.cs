@@ -2,7 +2,6 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
-using Android.Views;
 
 namespace KineticLyrics.Native;
 
@@ -19,24 +18,6 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
-        EnterImmersiveMode();
-    }
-
-    public override void OnWindowFocusChanged(bool hasFocus)
-    {
-        base.OnWindowFocusChanged(hasFocus);
-        if (hasFocus)
-            EnterImmersiveMode();
-    }
-
-    private void EnterImmersiveMode()
-    {
-        if (Window is null)
-            return;
-        Window.AddFlags(WindowManagerFlags.KeepScreenOn);
-        Window.DecorView.SystemUiVisibility = (StatusBarVisibility)(SystemUiFlags.Fullscreen |
-            SystemUiFlags.HideNavigation | SystemUiFlags.ImmersiveSticky |
-            SystemUiFlags.LayoutStable | SystemUiFlags.LayoutFullscreen | SystemUiFlags.LayoutHideNavigation);
     }
 
     internal static Task<Intent?> ChooseMusicFolderAsync()

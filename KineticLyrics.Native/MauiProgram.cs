@@ -19,6 +19,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IPlatformMediaSession, PlatformMediaSession>();
 #if WINDOWS
         builder.Services.AddSingleton<IWallpaperHost, WallpaperHost>();
+#elif ANDROID
+        builder.Services.AddSingleton<IWallpaperHost, AndroidWallpaperHost>();
 #else
         builder.Services.AddSingleton<IWallpaperHost, NoopWallpaperHost>();
 #endif

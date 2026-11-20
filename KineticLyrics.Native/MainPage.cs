@@ -19,7 +19,7 @@ public sealed class MainPage : ContentPage
     private const string RendererDescription = "Lyrics appear directly behind your desktop icons.";
 #else
     private const string RendererTitle = "Android live wallpaper";
-    private const string RendererDescription = "Android WallpaperService hosting is still to be added.";
+    private const string RendererDescription = "Lyrics render directly on your home screen through Android’s live wallpaper service.";
 #endif
 
     public MainPage(MediaSessionService media, ILocalLyricsProvider local, IWallpaperHost wallpaper)
@@ -93,6 +93,15 @@ public sealed class MainPage : ContentPage
                 _accessLabel
             }
         };
+#if ANDROID
+        var setWallpaperButton = new Button { Text = "Preview and set live wallpaper", BackgroundColor = Color.FromArgb("#FF4D6D"), TextColor = Colors.White, CornerRadius = 12, FontAttributes = FontAttributes.Bold };
+        setWallpaperButton.Clicked += (_, _) =>
+        {
+            try { Platforms.AndroidWallpaperHost.OpenWallpaperPicker(); }
+            catch (Exception ex) { _statusLabel.Text = ex.Message; }
+        };
+        layout.Children.Insert(3, setWallpaperButton);
+#endif
         Content = new ScrollView { Content = layout };
         _media.TrackChanged += OnTrackChanged;
         _wallpaper.StatusChanged += OnWallpaperStatusChanged;

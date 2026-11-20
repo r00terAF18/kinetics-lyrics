@@ -13,13 +13,12 @@ public sealed class LocalLyricsProvider : ILocalLyricsProvider
 {
     private const string RootToken = "kinetic-lyrics-music-root";
     private readonly SemaphoreSlim _indexLock = new(1, 1);
-    private string? _indexedRoot;
-    private IReadOnlyList<CatalogEntry> _catalog = [];
+    private readonly Dictionary<string, IReadOnlyList<CatalogEntry>> _catalogs = new(StringComparer.OrdinalIgnoreCase);
     private bool _isIndexing;
 
     public string AccessStatus => Preferences.Default.Get("music_root_token", string.Empty).Length > 0
-        ? _isIndexing ? "Indexing the selected music folder…" : "Music folder selected"
-        : "Choose a music folder to search local lyrics";
+        ? _isIndexing ? "Searching local music for lyrics…" : "Selected music folder and Music library are searched for local lyrics"
+        : _isIndexing ? "Searching your Music folder for lyrics…" : "Your Music folder is searched for local lyrics";
 
     public async Task<string?> ChooseMusicFolderAsync(CancellationToken cancellationToken = default)
     {
@@ -37,8 +36,9 @@ public sealed class LocalLyricsProvider : ILocalLyricsProvider
 
         StorageApplicationPermissions.FutureAccessList.AddOrReplace(RootToken, folder);
         Preferences.Default.Set("music_root_token", RootToken);
-        _indexedRoot = null;
-        _catalog = [];
+        await _indexLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { _catalogs.Remove(Path.GetFullPath(folder.Path)); }
+        finally { _indexLock.Release(); }
         return folder.Name;
     }
 
@@ -52,74 +52,92 @@ public sealed class LocalLyricsProvider : ILocalLyricsProvider
                 return direct;
         }
 
-        var token = Preferences.Default.Get("music_root_token", string.Empty);
-        if (token.Length == 0)
-            return null;
-
-        StorageFolder folder;
-        try
-        {
-            folder = await StorageApplicationPermissions.FutureAccessList.GetFolderAsync(token);
-        }
-        catch
-        {
-            return null;
-        }
-
-        await EnsureCatalogAsync(folder.Path, cancellationToken).ConfigureAwait(false);
         var exactKey = MakeKey(track.Artist, track.Title);
-        var candidate = _catalog.FirstOrDefault(entry => entry.Key == exactKey)
-            ?? _catalog.FirstOrDefault(entry => FilenameMatches(entry.Path, track));
-        if (candidate is null)
-            return null;
+        foreach (var root in await GetSearchRootsAsync(cancellationToken).ConfigureAwait(false))
+        {
+            var catalog = await EnsureCatalogAsync(root, cancellationToken).ConfigureAwait(false);
+            var candidate = catalog.FirstOrDefault(entry => entry.Key == exactKey)
+                ?? catalog.FirstOrDefault(entry => FilenameMatches(entry.Path, track));
+            if (candidate is null)
+                continue;
 
-        return await ReadFromAudioFileAsync(candidate.Path, cancellationToken).ConfigureAwait(false);
+            var lyrics = await ReadFromAudioFileAsync(candidate.Path, cancellationToken).ConfigureAwait(false);
+            if (lyrics is not null)
+                return lyrics;
+        }
+
+        return null;
     }
 
-    private async Task EnsureCatalogAsync(string root, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<string>> GetSearchRootsAsync(CancellationToken cancellationToken)
     {
-        if (_indexedRoot == root)
-            return;
+        var roots = new List<string>();
+        var token = Preferences.Default.Get("music_root_token", string.Empty);
+        if (token.Length > 0)
+        {
+            try
+            {
+                var selectedFolder = await StorageApplicationPermissions.FutureAccessList.GetFolderAsync(token);
+                if (Directory.Exists(selectedFolder.Path))
+                    roots.Add(selectedFolder.Path);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch { }
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        // Windows' global media-session metadata does not include the playing file's path.
+        // Search the user's Music library automatically, in addition to any selected folder.
+        var musicFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+        if (!string.IsNullOrWhiteSpace(musicFolder) && Directory.Exists(musicFolder))
+            roots.Add(musicFolder);
+
+        return roots.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private async Task<IReadOnlyList<CatalogEntry>> EnsureCatalogAsync(string root, CancellationToken cancellationToken)
+    {
+        root = Path.GetFullPath(root);
         await _indexLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_indexedRoot == root)
-                return;
-            await BuildCatalogAsync(root, cancellationToken).ConfigureAwait(false);
+            if (_catalogs.TryGetValue(root, out var existing))
+                return existing;
+
+            _isIndexing = true;
+            try
+            {
+                var entries = await Task.Run(() =>
+                {
+                    var found = new List<CatalogEntry>();
+                    foreach (var path in EnumerateAudioFiles(root, cancellationToken).Take(30000))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var title = Path.GetFileNameWithoutExtension(path);
+                        var artist = string.Empty;
+                        try
+                        {
+                            var metadata = new Track(path);
+                            if (!string.IsNullOrWhiteSpace(metadata.Title))
+                                title = metadata.Title;
+                            artist = metadata.Artist;
+                        }
+                        catch { }
+                        found.Add(new CatalogEntry(path, MakeKey(artist, title)));
+                    }
+                    return found;
+                }, cancellationToken).ConfigureAwait(false);
+                _catalogs[root] = entries;
+                return entries;
+            }
+            finally
+            {
+                _isIndexing = false;
+            }
         }
         finally
         {
             _indexLock.Release();
-        }
-    }
-
-    private async Task BuildCatalogAsync(string root, CancellationToken cancellationToken)
-    {
-        _isIndexing = true;
-        try
-        {
-            var entries = await Task.Run(() =>
-            {
-                var found = new List<CatalogEntry>();
-                foreach (var path in EnumerateAudioFiles(root, cancellationToken).Take(30000))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try
-                    {
-                        var metadata = new Track(path);
-                        var title = string.IsNullOrWhiteSpace(metadata.Title) ? Path.GetFileNameWithoutExtension(path) : metadata.Title;
-                        found.Add(new CatalogEntry(path, MakeKey(metadata.Artist, title)));
-                    }
-                    catch { }
-                }
-                return found;
-            }, cancellationToken).ConfigureAwait(false);
-            _catalog = entries;
-            _indexedRoot = root;
-        }
-        finally
-        {
-            _isIndexing = false;
         }
     }
 
@@ -147,6 +165,19 @@ public sealed class LocalLyricsProvider : ILocalLyricsProvider
         return await Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            var sidecar = Path.ChangeExtension(path, ".lrc");
+            try
+            {
+                if (File.Exists(sidecar))
+                {
+                    var sidecarLyrics = File.ReadAllText(sidecar);
+                    if (LrcParser.Parse(sidecarLyrics).Count > 1)
+                        return sidecarLyrics;
+                }
+            }
+            catch { }
+
             try
             {
                 var audio = new Track(path);
@@ -167,8 +198,7 @@ public sealed class LocalLyricsProvider : ILocalLyricsProvider
                     }
                 }
 
-                var sidecar = Path.ChangeExtension(path, ".lrc");
-                return File.Exists(sidecar) ? File.ReadAllText(sidecar) : null;
+                return null;
             }
             catch { return null; }
         }, cancellationToken).ConfigureAwait(false);

@@ -112,22 +112,31 @@ public sealed class WallpaperHost : IWallpaperHost, IDisposable
 
     private void OnTrackChanged(object? sender, MediaTrackSnapshot? track)
     {
+        bool trackChanged;
+        CancellationToken lyricsToken;
         lock (_stateLock)
         {
+            trackChanged = !string.Equals(_track?.Identity, track?.Identity, StringComparison.Ordinal)
+                || !string.Equals(_track?.Source, track?.Source, StringComparison.Ordinal);
             _track = track;
-            _document = null;
-            _lyricsRequest?.Cancel();
-            _lyricsRequest?.Dispose();
-            _lyricsRequest = track is null ? null : CancellationTokenSource.CreateLinkedTokenSource(_lifetime?.Token ?? CancellationToken.None);
+            if (trackChanged)
+            {
+                _document = null;
+                _lyricsRequest?.Cancel();
+                _lyricsRequest?.Dispose();
+                _lyricsRequest = track is null ? null : CancellationTokenSource.CreateLinkedTokenSource(_lifetime?.Token ?? CancellationToken.None);
+            }
+            lyricsToken = _lyricsRequest?.Token ?? CancellationToken.None;
         }
-        if (track is null)
-            SetStatus("Waiting for music");
-        else
+        if (trackChanged)
         {
-            SetStatus($"Looking for lyrics: {track.Title}");
-            CancellationToken token;
-            lock (_stateLock) token = _lyricsRequest?.Token ?? CancellationToken.None;
-            _ = LoadLyricsAsync(track, token);
+            if (track is null)
+                SetStatus("Waiting for music");
+            else
+            {
+                SetStatus($"Looking for lyrics: {track.Title}");
+                _ = LoadLyricsAsync(track, lyricsToken);
+            }
         }
         InvalidateWallpaperWindows();
     }
@@ -353,31 +362,42 @@ public sealed class WallpaperHost : IWallpaperHost, IDisposable
 
     private static IntPtr DispatchWindowMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
     {
-        if (message == WmNccreate)
+        WallpaperHost? owner = null;
+        try
         {
-            var create = Marshal.PtrToStructure<CreateStruct>(lParam);
-            _ = SetWindowLongPtr(hwnd, GwlpUserData, create.CreateParams);
+            if (message == WmNccreate)
+            {
+                var create = Marshal.PtrToStructure<CreateStruct>(lParam);
+                _ = SetWindowLongPtr(hwnd, GwlpUserData, create.CreateParams);
+            }
+            var data = GetWindowLongPtr(hwnd, GwlpUserData);
+            owner = data == IntPtr.Zero ? null : GCHandle.FromIntPtr(data).Target as WallpaperHost;
+            switch (message)
+            {
+                case WmCreate:
+                    _ = SetTimer(hwnd, TimerFrame, 40, IntPtr.Zero);
+                    return IntPtr.Zero;
+                case WmTimer:
+                    _ = InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return IntPtr.Zero;
+                case WmEraseBkgnd:
+                    return new IntPtr(1);
+                case WmPaint:
+                    owner?.Paint(hwnd);
+                    return IntPtr.Zero;
+                case WmDestroy:
+                    _ = KillTimer(hwnd, TimerFrame);
+                    return IntPtr.Zero;
+                default:
+                    return DefWindowProcW(hwnd, message, wParam, lParam);
+            }
         }
-        var data = GetWindowLongPtr(hwnd, GwlpUserData);
-        var owner = data == IntPtr.Zero ? null : GCHandle.FromIntPtr(data).Target as WallpaperHost;
-        switch (message)
+        catch (Exception ex)
         {
-            case WmCreate:
-                _ = SetTimer(hwnd, TimerFrame, 40, IntPtr.Zero);
-                return IntPtr.Zero;
-            case WmTimer:
-                _ = InvalidateRect(hwnd, IntPtr.Zero, false);
-                return IntPtr.Zero;
-            case WmEraseBkgnd:
-                return new IntPtr(1);
-            case WmPaint:
-                owner?.Paint(hwnd);
-                return IntPtr.Zero;
-            case WmDestroy:
-                _ = KillTimer(hwnd, TimerFrame);
-                return IntPtr.Zero;
-            default:
-                return DefWindowProcW(hwnd, message, wParam, lParam);
+            _ = KillTimer(hwnd, TimerFrame);
+            try { owner?.SetStatus($"Wallpaper renderer stopped: {ex.GetType().Name}: {ex.Message}"); }
+            catch { }
+            return DefWindowProcW(hwnd, message, wParam, lParam);
         }
     }
 
@@ -510,10 +530,10 @@ public sealed class WallpaperHost : IWallpaperHost, IDisposable
     [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr CreateFontW(int height, int width, int escapement, int orientation, int weight, uint italic, uint underline, uint strikeOut, uint charSet, uint outputPrecision, uint clipPrecision, uint quality, uint pitchAndFamily, string faceName);
     [DllImport("gdi32.dll")] private static extern int SetBkMode(IntPtr hdc, int mode);
     [DllImport("gdi32.dll")] private static extern int SetTextColor(IntPtr hdc, int color);
-    [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] private static extern int DrawTextW(IntPtr hdc, string text, int length, ref Rect rect, uint format);
+    [DllImport("user32.dll", EntryPoint = "DrawTextW", CharSet = CharSet.Unicode, ExactSpelling = true)] private static extern int DrawTextW(IntPtr hdc, string text, int length, ref Rect rect, uint format);
     [DllImport("gdi32.dll")] private static extern IntPtr SelectObject(IntPtr hdc, IntPtr obj);
     [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr obj);
-    [DllImport("gdi32.dll")] private static extern int FillRect(IntPtr hdc, ref Rect rect, IntPtr brush);
+    [DllImport("user32.dll", SetLastError = true)] private static extern int FillRect(IntPtr hdc, ref Rect rect, IntPtr brush);
     [DllImport("gdi32.dll")] private static extern bool MoveToEx(IntPtr hdc, int x, int y, IntPtr previousPoint);
     [DllImport("gdi32.dll")] private static extern bool LineTo(IntPtr hdc, int x, int y);
     [DllImport("user32.dll")] private static extern bool DestroyWindow(IntPtr hwnd);

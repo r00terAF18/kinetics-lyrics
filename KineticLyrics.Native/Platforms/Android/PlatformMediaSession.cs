@@ -42,6 +42,15 @@ public sealed class PlatformMediaSession : IPlatformMediaSession
         return Task.CompletedTask;
     }
 
+    public void Stop()
+    {
+        var cancellation = Interlocked.Exchange(ref _pollCancellation, null);
+        if (cancellation is null)
+            return;
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+
     public Task RequestAccessAsync(CancellationToken cancellationToken = default)
     {
         var activity = Platform.CurrentActivity;
