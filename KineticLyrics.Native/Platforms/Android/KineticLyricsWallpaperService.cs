@@ -2,8 +2,10 @@ using Android.App;
 using Android.Content;
 using Android.Graphics;
 using Android.OS;
+using Android.Runtime;
 using Android.Service.Wallpaper;
 using Android.Views;
+using Java.Interop;
 using KineticLyrics.Native.Models;
 using KineticLyrics.Native.Services;
 using Color = Android.Graphics.Color;
@@ -14,24 +16,15 @@ using TypefaceStyle = Android.Graphics.TypefaceStyle;
 
 namespace KineticLyrics.Native.Platforms;
 
-[Service(
-    Name = "com.kineticslyrics.app.KineticLyricsWallpaperService",
-    Permission = "android.permission.BIND_WALLPAPER",
-    Exported = true,
-    Label = "Kinetic Lyrics")]
-[IntentFilter(["android.service.wallpaper.WallpaperService"])]
-[MetaData("android.service.wallpaper", Resource = "@xml/kinetic_lyrics_wallpaper")]
-public sealed class KineticLyricsWallpaperService : WallpaperService
+[Register("com/kineticslyrics/app/KineticLyricsWallpaperController")]
+public sealed class KineticLyricsWallpaperController : Java.Lang.Object
 {
-    public override Engine OnCreateEngine() => new LyricsEngine(this);
-
-    private sealed class LyricsEngine : WallpaperService.Engine
-    {
         private const string LyricsRefreshGenerationKey = "android_lyrics_refresh_generation";
         private static readonly Typeface BoldTypeface = Typeface.Create("sans-serif", TypefaceStyle.Bold);
         private static readonly Typeface RegularTypeface = Typeface.Create("sans-serif", TypefaceStyle.Normal);
         private readonly Handler _handler = new(Looper.MainLooper!);
         private readonly Java.Lang.Runnable _drawRunnable;
+        private ISurfaceHolder? _surfaceHolder;
         private readonly PlatformMediaSession _mediaSession = new();
         private readonly LyricsService _lyricsService = new(new LocalLyricsProvider());
         private readonly CancellationTokenSource _lifetime = new();
@@ -48,9 +41,8 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
         private DateTimeOffset _nextSettingsCheck;
         private DateTimeOffset _animationStarted = DateTimeOffset.UtcNow;
 
-        public LyricsEngine(KineticLyricsWallpaperService service) : base(service)
+        public KineticLyricsWallpaperController()
         {
-            SetTouchEventsEnabled(false);
             _drawRunnable = new Java.Lang.Runnable(DrawFrame);
             _mediaSession.TrackChanged += OnTrackChanged;
             _ = _mediaSession.StartAsync(_lifetime.Token);
@@ -66,31 +58,34 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
             }
         }
 
-        public override void OnVisibilityChanged(bool visible)
+        [Export("onVisibilityChanged")]
+        public void OnVisibilityChanged(bool visible)
         {
-            base.OnVisibilityChanged(visible);
             _visible = visible;
             _handler.RemoveCallbacks(_drawRunnable);
             if (_visible && !_destroyed)
                 _handler.Post(_drawRunnable);
         }
 
-        public override void OnSurfaceChanged(ISurfaceHolder holder, Format format, int width, int height)
+        [Export("onSurfaceChanged")]
+        public void OnSurfaceChanged(ISurfaceHolder holder, Format format, int width, int height)
         {
-            base.OnSurfaceChanged(holder, format, width, height);
+            _surfaceHolder = holder;
             _width = width;
             _height = height;
             if (_visible)
                 _handler.Post(_drawRunnable);
         }
 
-        public override void OnSurfaceDestroyed(ISurfaceHolder holder)
+        [Export("onSurfaceDestroyed")]
+        public void OnSurfaceDestroyed(ISurfaceHolder holder)
         {
             _handler.RemoveCallbacks(_drawRunnable);
-            base.OnSurfaceDestroyed(holder);
+            _surfaceHolder = null;
         }
 
-        public override void OnDestroy()
+        [Export("onDestroy")]
+        public void OnDestroy()
         {
             _destroyed = true;
             _visible = false;
@@ -99,9 +94,9 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
             _mediaSession.Stop();
             _lifetime.Cancel();
             _lifetime.Dispose();
+            _surfaceHolder = null;
             _artwork?.Recycle();
             _artwork = null;
-            base.OnDestroy();
         }
 
         private void OnTrackChanged(object? sender, MediaTrackSnapshot? track)
@@ -157,7 +152,7 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
 
             CheckSettings(DateTimeOffset.UtcNow);
 
-            var holder = SurfaceHolder;
+            var holder = _surfaceHolder;
             if (holder?.Surface?.IsValid != true)
                 return;
 
@@ -392,5 +387,4 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
             paint.SetTypeface(bold ? BoldTypeface : RegularTypeface);
             canvas.DrawText(text, x, y, paint);
         }
-    }
 }

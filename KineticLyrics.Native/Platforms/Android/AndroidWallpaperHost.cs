@@ -31,7 +31,7 @@ public sealed class AndroidWallpaperHost : IWallpaperHost
     {
         var activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity
             ?? throw new InvalidOperationException("The Android activity is not available.");
-        var component = new ComponentName(activity, Java.Lang.Class.FromType(typeof(KineticLyricsWallpaperService)));
+        var component = new ComponentName(activity, "com.kineticslyrics.app.KineticLyricsWallpaperService");
         var intent = new Intent("android.service.wallpaper.CHANGE_LIVE_WALLPAPER");
         intent.PutExtra("android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT", component);
         activity.StartActivity(intent);

@@ -2,5 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
-  <application android:allowBackup="false" android:supportsRtl="true" />
+  <application android:allowBackup="false" android:supportsRtl="true">
+    <service
+      android:name="com.kineticslyrics.app.KineticLyricsWallpaperService"
+      android:exported="true"
+      android:label="Kinetic Lyrics"
+      android:permission="android.permission.BIND_WALLPAPER">
+      <intent-filter>
+        <action android:name="android.service.wallpaper.WallpaperService" />
+      </intent-filter>
+      <meta-data
+        android:name="android.service.wallpaper"
+        android:resource="@xml/kinetic_lyrics_wallpaper" />
+    </service>
+  </application>
 </manifest>

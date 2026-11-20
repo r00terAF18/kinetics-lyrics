@@ -25,6 +25,10 @@
     <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == '' and Exists('$(MSBuildThisFileDirectory)..\.tools\jdk-extract\jdk-21.0.13.1+2\bin\java.exe')">$(MSBuildThisFileDirectory)..\.tools\jdk-extract\jdk-21.0.13.1+2</JavaSdkDirectory>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+    <AndroidJavaSource Include="Platforms\Android\KineticLyricsWallpaperService.java" Bind="false" />
+  </ItemGroup>
+
   <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
