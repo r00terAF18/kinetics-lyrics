@@ -5,13 +5,21 @@ namespace KineticLyrics.Native.Platforms;
 
 public sealed class AndroidWallpaperHost : IWallpaperHost
 {
+    private const string LyricsRefreshGenerationKey = "android_lyrics_refresh_generation";
+
     public event EventHandler<string>? StatusChanged;
 
     public string Status => "Preview the wallpaper, then choose Set wallpaper to enable it.";
 
     public Task StartAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    public Task RefreshLyricsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task RefreshLyricsAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var generation = Preferences.Default.Get(LyricsRefreshGenerationKey, 0);
+        Preferences.Default.Set(LyricsRefreshGenerationKey, unchecked(generation + 1));
+        return Task.CompletedTask;
+    }
 
     public void SetLyricsOffset(double seconds)
     {

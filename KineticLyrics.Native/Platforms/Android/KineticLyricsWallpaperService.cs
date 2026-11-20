@@ -27,6 +27,9 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
 
     private sealed class LyricsEngine : WallpaperService.Engine
     {
+        private const string LyricsRefreshGenerationKey = "android_lyrics_refresh_generation";
+        private static readonly Typeface BoldTypeface = Typeface.Create("sans-serif", TypefaceStyle.Bold);
+        private static readonly Typeface RegularTypeface = Typeface.Create("sans-serif", TypefaceStyle.Normal);
         private readonly Handler _handler = new(Looper.MainLooper!);
         private readonly Java.Lang.Runnable _drawRunnable;
         private readonly PlatformMediaSession _mediaSession = new();
@@ -41,6 +44,8 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
         private bool _destroyed;
         private int _width;
         private int _height;
+        private int _lyricsRefreshGeneration;
+        private DateTimeOffset _nextSettingsCheck;
         private DateTimeOffset _animationStarted = DateTimeOffset.UtcNow;
 
         public LyricsEngine(KineticLyricsWallpaperService service) : base(service)
@@ -49,8 +54,16 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
             _drawRunnable = new Java.Lang.Runnable(DrawFrame);
             _mediaSession.TrackChanged += OnTrackChanged;
             _ = _mediaSession.StartAsync(_lifetime.Token);
-            try { _lyricsOffset = Preferences.Default.Get("lyrics_offset_seconds", 0d); }
-            catch { _lyricsOffset = 0; }
+            try
+            {
+                _lyricsOffset = Preferences.Default.Get("lyrics_offset_seconds", 0d);
+                _lyricsRefreshGeneration = Preferences.Default.Get(LyricsRefreshGenerationKey, 0);
+            }
+            catch
+            {
+                _lyricsOffset = 0;
+                _lyricsRefreshGeneration = 0;
+            }
         }
 
         public override void OnVisibilityChanged(bool visible)
@@ -142,6 +155,8 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
             if (_destroyed || !_visible || _width <= 0 || _height <= 0)
                 return;
 
+            CheckSettings(DateTimeOffset.UtcNow);
+
             var holder = SurfaceHolder;
             if (holder?.Surface?.IsValid != true)
                 return;
@@ -170,6 +185,27 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
 
             if (_visible && !_destroyed)
                 _handler.PostDelayed(_drawRunnable, 40);
+        }
+
+        private void CheckSettings(DateTimeOffset now)
+        {
+            if (now < _nextSettingsCheck)
+                return;
+            _nextSettingsCheck = now.AddMilliseconds(500);
+            try
+            {
+                _lyricsOffset = Preferences.Default.Get("lyrics_offset_seconds", _lyricsOffset);
+                var generation = Preferences.Default.Get(LyricsRefreshGenerationKey, _lyricsRefreshGeneration);
+                if (generation == _lyricsRefreshGeneration)
+                    return;
+                _lyricsRefreshGeneration = generation;
+                if (_track is not null && _lyricsIdentity is not null)
+                {
+                    _lyrics = null;
+                    _ = LoadLyricsAsync(_track, _lyricsIdentity, _lifetime.Token);
+                }
+            }
+            catch { }
         }
 
         private void DrawScene(Canvas canvas, int width, int height)
@@ -226,18 +262,19 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
             else
             {
                 using var gradient = new LinearGradient(0, 0, width, height,
-                    new[] { Color.Rgb(17, 15, 23), Color.Rgb(6, 7, 11) }, new float[] { 0, 1 }, Shader.TileMode.Clamp);
-                paint.Shader = gradient;
+                    Color.Rgb(17, 15, 23), Color.Rgb(6, 7, 11), Shader.TileMode.Clamp);
+                paint.SetShader(gradient);
                 canvas.DrawRect(0, 0, width, height, paint);
-                paint.Shader = null;
+                paint.SetShader(null);
             }
         }
 
         private static void DrawVignette(Canvas canvas, int width, int height)
         {
             using var shader = new RadialGradient(width / 2f, height / 2f, Math.Max(width, height) * .75f,
-                new[] { Color.Argb(0, 0, 0, 0), Color.Argb(160, 0, 0, 0) }, new float[] { 0.25f, 1f }, Shader.TileMode.Clamp);
-            using var paint = new Paint(PaintFlags.AntiAlias) { Shader = shader };
+                Color.Argb(0, 0, 0, 0), Color.Argb(160, 0, 0, 0), Shader.TileMode.Clamp);
+            using var paint = new Paint(PaintFlags.AntiAlias);
+            paint.SetShader(shader);
             canvas.DrawRect(0, 0, width, height, paint);
         }
 
@@ -250,11 +287,11 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
             var fontSize = Math.Clamp(Math.Min(width, height) * .09f, 32, 112);
             var paint = new Paint(PaintFlags.AntiAlias | PaintFlags.SubpixelText)
             {
-                Typeface = Typeface.Create("sans-serif", TypefaceStyle.Bold),
                 TextSize = fontSize,
                 TextAlign = Paint.Align.Left,
                 Color = Color.Rgb(244, 241, 234)
             };
+            paint.SetTypeface(BoldTypeface);
             using (paint)
             {
                 paint.SetShadowLayer(8, 0, 2, Color.Argb(170, 0, 0, 0));
@@ -301,11 +338,11 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
                 text = text[..100];
             using var paint = new Paint(PaintFlags.AntiAlias)
             {
-                Typeface = Typeface.Create("sans-serif", TypefaceStyle.Bold),
                 TextSize = size,
                 TextAlign = Paint.Align.Center,
                 Color = Color.Argb(alpha, 244, 241, 234)
             };
+            paint.SetTypeface(BoldTypeface);
             while (paint.MeasureText(text) > width * .86f && paint.TextSize > 8)
                 paint.TextSize *= .92f;
             canvas.DrawText(text, width * .5f, y, paint);
@@ -330,29 +367,29 @@ public sealed class KineticLyricsWallpaperService : WallpaperService
                 return;
             using var title = new Paint(PaintFlags.AntiAlias)
             {
-                Typeface = Typeface.Create("sans-serif", TypefaceStyle.Bold),
                 TextSize = Math.Clamp(Math.Min(width, height) * .021f, 12, 22),
                 Color = Color.Argb(190, 244, 241, 234)
             };
+            title.SetTypeface(BoldTypeface);
             using var artist = new Paint(PaintFlags.AntiAlias)
             {
-                Typeface = Typeface.Create("sans-serif", TypefaceStyle.Normal),
                 TextSize = title.TextSize * .78f,
                 Color = Color.Argb(125, 244, 241, 234)
             };
+            artist.SetTypeface(RegularTypeface);
             canvas.DrawText(_track.Title, width * .04f, height * .935f, title);
             canvas.DrawText(_track.Artist, width * .04f, height * .968f, artist);
         }
 
-        private static void DrawCentered(Canvas canvas, string text, float x, float y, float size, int color, bool bold)
+        private static void DrawCentered(Canvas canvas, string text, float x, float y, float size, Color color, bool bold)
         {
             using var paint = new Paint(PaintFlags.AntiAlias)
             {
-                Typeface = Typeface.Create("sans-serif", bold ? TypefaceStyle.Bold : TypefaceStyle.Normal),
                 TextSize = size,
                 TextAlign = Paint.Align.Center,
                 Color = color
             };
+            paint.SetTypeface(bold ? BoldTypeface : RegularTypeface);
             canvas.DrawText(text, x, y, paint);
         }
     }

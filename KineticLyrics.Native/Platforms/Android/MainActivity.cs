@@ -1,11 +1,11 @@
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
-using Android.OS;
 
 namespace KineticLyrics.Native;
 
 [Activity(
+    Name = "com.kineticslyrics.app.MainActivity",
     Theme = "@style/Maui.SplashTheme",
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTop,
@@ -14,11 +14,6 @@ public class MainActivity : MauiAppCompatActivity
 {
     private const int MusicFolderRequestCode = 4102;
     private static TaskCompletionSource<Intent?>? _folderPicker;
-
-    protected override void OnCreate(Bundle? savedInstanceState)
-    {
-        base.OnCreate(savedInstanceState);
-    }
 
     internal static Task<Intent?> ChooseMusicFolderAsync()
     {
