@@ -1,7 +1,7 @@
 <Window x:Class="KineticWallpaper.WallpaperWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" AllowsTransparency="False"
         Background="#10101A" Focusable="False">
     <Grid IsHitTestVisible="False" Margin="60">
         <TextBlock x:Name="LyricsText" Foreground="#F4F1EA" FontSize="58" FontWeight="Bold"
