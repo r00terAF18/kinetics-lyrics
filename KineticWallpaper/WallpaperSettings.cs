@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Microsoft.Win32;
 
 namespace KineticWallpaper;
 
@@ -14,7 +15,7 @@ public sealed class WallpaperSettings
     public bool ShowSongInfo { get; set; } = true;
     public bool BlurredAlbumBg { get; set; } = true;
     public double BackgroundDim { get; set; } = 0.55;
-    public double HudLiftPercent { get; set; } = 0.04;
+    public double HudLiftPercent { get; set; } = 0.065;
 
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -37,6 +38,36 @@ public sealed class WallpaperSettings
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
             File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch { }
+    }
+
+    public static bool IsStartupEnabled()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
+            return key?.GetValue("KineticLyricsWallpaper") is string;
+        }
+        catch { return false; }
+    }
+
+    public static void SetStartupEnabled(bool enable)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+            if (key is null) return;
+            if (enable)
+            {
+                var exePath = Environment.ProcessPath;
+                if (!string.IsNullOrEmpty(exePath))
+                    key.SetValue("KineticLyricsWallpaper", $"{exePath}");
+            }
+            else
+            {
+                key.DeleteValue("KineticLyricsWallpaper", false);
+            }
         }
         catch { }
     }

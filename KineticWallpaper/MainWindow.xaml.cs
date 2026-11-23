@@ -55,9 +55,11 @@ public partial class MainWindow : Window
         SetupTrayIcon();
         ApplySettingsToUi();
 
-        SourceInitialized += (_, _) => DesktopWallpaperHost.Attach(this);
+        // Attach after Loaded so WPF's DirectX surface and window bounds are initialized
+        SizeChanged += (_, _) => ApplySettingsToUi();
         Loaded += (_, _) =>
         {
+            DesktopWallpaperHost.Attach(this);
             _audio.Start();
             _ = Task.Run(() => _monitor.RunAsync(_cts.Token));
             CompositionTarget.Rendering += OnRenderFrame;
@@ -104,7 +106,7 @@ public partial class MainWindow : Window
 
         HudTitle.Text = snap.Title;
         HudArtist.Text = snap.Artist;
-        StatusText.Text = snap.StatusText.ToUpperInvariant();
+        StatusText.Text = $"{snap.StatusText.ToUpperInvariant()}  ·  {DesktopWallpaperHost.ModeDescription.ToUpperInvariant()}";
         if (snap.Duration > 0)
         {
             double pct = Math.Clamp(snap.InterpolatedPosition / snap.Duration, 0, 1);
@@ -494,7 +496,7 @@ public partial class MainWindow : Window
     {
         DimLayer.Opacity = Math.Clamp(_settings.BackgroundDim, 0, 0.95);
         HudCard.Visibility = _settings.ShowSongInfo ? Visibility.Visible : Visibility.Collapsed;
-        double lift = Math.Max(48, ActualHeight * _settings.HudLiftPercent);
+        double lift = Math.Max(68, ActualHeight * _settings.HudLiftPercent);
         HudCard.Margin = new Thickness(48, 0, 0, lift);
         StatusPanel.Margin = new Thickness(0, 0, 48, lift);
     }
@@ -529,6 +531,28 @@ public partial class MainWindow : Window
         blurItem.CheckedChanged += (_, _) => { _settings.BlurredAlbumBg = blurItem.Checked; _settings.Save(); UpdateAlbumArtAndAccent(_lastThumbBytes); };
         menu.Items.Add(blurItem);
 
+        var songInfoItem = new Forms.ToolStripMenuItem("Show Song Info HUD") { Checked = _settings.ShowSongInfo, CheckOnClick = true };
+        songInfoItem.CheckedChanged += (_, _) => { _settings.ShowSongInfo = songInfoItem.Checked; _settings.Save(); ApplySettingsToUi(); };
+        menu.Items.Add(songInfoItem);
+
+        var syncMenu = new Forms.ToolStripMenuItem("Lyrics Timing Offset");
+        syncMenu.DropDownItems.Add("Show Earlier (+0.10s)", null, (_, _) => Dispatcher.Invoke(() => { _songNudgeSeconds = Math.Round(_songNudgeSeconds + 0.1, 2); UpdateSyncLabel(); }));
+        syncMenu.DropDownItems.Add("Show Later (-0.10s)", null, (_, _) => Dispatcher.Invoke(() => { _songNudgeSeconds = Math.Round(_songNudgeSeconds - 0.1, 2); UpdateSyncLabel(); }));
+        syncMenu.DropDownItems.Add("Reset Offset (0.00s)", null, (_, _) => Dispatcher.Invoke(() => { _songNudgeSeconds = 0; UpdateSyncLabel(); }));
+        menu.Items.Add(syncMenu);
+
+        var startupItem = new Forms.ToolStripMenuItem("Start with Windows") { Checked = WallpaperSettings.IsStartupEnabled(), CheckOnClick = true };
+        startupItem.CheckedChanged += (_, _) => WallpaperSettings.SetStartupEnabled(startupItem.Checked);
+        menu.Items.Add(startupItem);
+
+        var floatItem = new Forms.ToolStripMenuItem("Floating Window Mode (Preview)") { Checked = false, CheckOnClick = true };
+        floatItem.CheckedChanged += (_, _) => Dispatcher.Invoke(() =>
+        {
+            if (floatItem.Checked) DesktopWallpaperHost.DetachToWindow(this);
+            else DesktopWallpaperHost.Reattach(this);
+        });
+        menu.Items.Add(floatItem);
+        menu.Items.Add("Re-attach to Desktop Layer", null, (_, _) => Dispatcher.Invoke(() => { floatItem.Checked = false; DesktopWallpaperHost.Reattach(this); }));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit Wallpaper", null, (_, _) => Dispatcher.Invoke(Close));
         _trayIcon.ContextMenuStrip = menu;
