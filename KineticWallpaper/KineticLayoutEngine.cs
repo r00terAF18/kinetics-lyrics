@@ -368,7 +368,8 @@ public static class KineticLayoutEngine
                     for (int c = 0; c < row.Length; c++)
                     {
                         int idx = row[c];
-                        var f = faces[(idx * 3 + (int)HashString(words[idx])) % faces.Length];
+                        int faceIndex = (int)(((ulong)(uint)Math.Max(0, idx) * 3UL + HashString(words[idx])) % (ulong)faces.Length);
+                        var f = faces[faceIndex];
                         var m = Measure(words[idx], f, FontWeights.Bold, FontStyles.Normal, true, 100);
                         double fs = Math.Min(100 * slotW * 0.86 / m.Width, 100 * rowH * 0.76 / m.Height);
                         double cx = W * 0.08 + slotW * (c + 0.5);

@@ -6,10 +6,7 @@
         ShowInTaskbar="False"
         Background="#08080B">
     <Grid x:Name="RootGrid" ClipToBounds="True">
-        <Image x:Name="BackgroundArt" Stretch="UniformToFill" Opacity="0.55" RenderTransformOrigin="0.5,0.5">
-            <Image.Effect>
-                <BlurEffect Radius="65" KernelType="Gaussian" />
-            </Image.Effect>
+        <Image x:Name="BackgroundArt" Stretch="UniformToFill" Opacity="0.55" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5">
             <Image.RenderTransform>
                 <ScaleTransform ScaleX="1.15" ScaleY="1.15" />
             </Image.RenderTransform>

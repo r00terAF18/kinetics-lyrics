@@ -17,7 +17,7 @@ public record MediaSnapshot(
 
 public sealed class MediaMonitor
 {
-    private readonly MusicLibrary _library;
+    private readonly MusicLibrary? _library;
     private double _basePos;
     private long _baseTicks;
     private double _lastReportedPos = -1;
@@ -35,7 +35,7 @@ public sealed class MediaMonitor
     private string? _sessionKey;
     private int _requestVersion;
 
-    public MediaMonitor(MusicLibrary library) => _library = library;
+    public MediaMonitor(MusicLibrary? library) => _library = library;
 
     public double CurrentPosition =>
         _basePos + (_isPlaying ? Stopwatch.GetElapsedTime(_baseTicks).TotalSeconds : 0) + _phaseCorrection;
@@ -103,7 +103,7 @@ public sealed class MediaMonitor
                     int reqId = ++_requestVersion;
                     _ = Task.Run(async () =>
                     {
-                        var track = _library.Match(title, artist, album, _duration);
+                        var track = _library?.Match(title, artist, album, _duration);
                         var resolved = await LyricsResolver.ResolveAsync(track, title, artist, album, _duration, ct);
                         if (reqId != _requestVersion) return;
                         _lyrics = resolved;

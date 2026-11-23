@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     }
 
     private readonly CancellationTokenSource _cts = new();
-    private readonly MusicLibrary _library;
+    private readonly MusicLibrary? _library;
     private readonly MediaMonitor _monitor;
     private readonly AudioReactor _audio = new();
     private readonly WallpaperSettings _settings;
@@ -49,7 +49,7 @@ public partial class MainWindow : Window
         var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KineticLyrics");
         Directory.CreateDirectory(dataDir);
 
-        _library = new MusicLibrary(Path.Combine(dataDir, "library.db"));
+        try { _library = new MusicLibrary(Path.Combine(dataDir, "library.db")); } catch (Exception ex) { App.LogCrash("MusicLibrary", ex); }
         _monitor = new MediaMonitor(_library);
 
         SetupTrayIcon();
@@ -62,6 +62,7 @@ public partial class MainWindow : Window
             DesktopWallpaperHost.Attach(this);
             _audio.Start();
             _ = Task.Run(() => _monitor.RunAsync(_cts.Token));
+            UpdateIdleClock();
             CompositionTarget.Rendering += OnRenderFrame;
         };
         Closed += (_, _) =>
@@ -69,7 +70,7 @@ public partial class MainWindow : Window
             CompositionTarget.Rendering -= OnRenderFrame;
             _cts.Cancel();
             _audio.Dispose();
-            _library.Dispose();
+            _library?.Dispose();
             _trayIcon?.Dispose();
         };
     }
@@ -228,8 +229,21 @@ public partial class MainWindow : Window
     {
         RetireActiveGroup();
 
-        var (layout, transition, units) = KineticLayoutEngine.Compose(
-            line, ActualWidth, ActualHeight, _settings.Chaos, _lastLayout, _lastTransition);
+        LayoutKind layout;
+        TransitionKind transition;
+        IReadOnlyList<LayoutUnit> units;
+        try
+        {
+            (layout, transition, units) = KineticLayoutEngine.Compose(
+                line, ActualWidth, ActualHeight, _settings.Chaos, _lastLayout, _lastTransition);
+        }
+        catch (Exception ex)
+        {
+            App.LogCrash("RenderLine.Compose", ex);
+            layout = LayoutKind.Stack;
+            transition = TransitionKind.Fade;
+            units = [];
+        }
 
         if (forceLayout.HasValue)
         {
@@ -445,7 +459,22 @@ public partial class MainWindow : Window
             bmp.Freeze();
 
             HudAlbumArt.Source = bmp;
-            BackgroundArt.Source = _settings.BlurredAlbumBg ? bmp : null;
+            if (_settings.BlurredAlbumBg)
+            {
+                using var msBlur = new MemoryStream(bytes);
+                var blurBmp = new BitmapImage();
+                blurBmp.BeginInit();
+                blurBmp.CacheOption = BitmapCacheOption.OnLoad;
+                blurBmp.DecodePixelWidth = 36;
+                blurBmp.StreamSource = msBlur;
+                blurBmp.EndInit();
+                blurBmp.Freeze();
+                BackgroundArt.Source = blurBmp;
+            }
+            else
+            {
+                BackgroundArt.Source = null;
+            }
 
             if (_settings.AutoAccent)
                 SetAccentColor(ExtractVibrantAccent(bmp));
@@ -455,7 +484,13 @@ public partial class MainWindow : Window
 
     private static Color ExtractVibrantAccent(BitmapSource src)
     {
-        var scaled = new TransformedBitmap(src, new ScaleTransform(24.0 / src.PixelWidth, 24.0 / src.PixelHeight));
+        if (src.PixelWidth <= 0 || src.PixelHeight <= 0)
+            return Color.FromRgb(255, 77, 109);
+
+        var bgra = src.Format == PixelFormats.Bgra32
+            ? src
+            : new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
+        var scaled = new TransformedBitmap(bgra, new ScaleTransform(24.0 / bgra.PixelWidth, 24.0 / bgra.PixelHeight));
         int stride = scaled.PixelWidth * 4;
         var pixels = new byte[scaled.PixelHeight * stride];
         scaled.CopyPixels(pixels, stride, 0);
@@ -520,7 +555,7 @@ public partial class MainWindow : Window
         {
             using var dialog = new Forms.FolderBrowserDialog { Description = "Select music folder for embedded/sidecar LRC" };
             if (dialog.ShowDialog() == Forms.DialogResult.OK)
-                _ = Task.Run(() => _library.Scan(dialog.SelectedPath));
+                if (_library is not null) _ = Task.Run(() => _library.Scan(dialog.SelectedPath));
         });
 
         var clockItem = new Forms.ToolStripMenuItem("Idle Clock") { Checked = _settings.ShowIdleClock, CheckOnClick = true };
@@ -545,14 +580,30 @@ public partial class MainWindow : Window
         startupItem.CheckedChanged += (_, _) => WallpaperSettings.SetStartupEnabled(startupItem.Checked);
         menu.Items.Add(startupItem);
 
-        var floatItem = new Forms.ToolStripMenuItem("Floating Window Mode (Preview)") { Checked = false, CheckOnClick = true };
-        floatItem.CheckedChanged += (_, _) => Dispatcher.Invoke(() =>
+        var modeMenu = new Forms.ToolStripMenuItem("Display Mode");
+        var modeAuto = new Forms.ToolStripMenuItem("Behind Desktop Icons (Auto)") { Checked = true };
+        var modeBottom = new Forms.ToolStripMenuItem("Bottom-Most Desktop Window");
+        var modeFloat = new Forms.ToolStripMenuItem("Floating Window (Preview)");
+
+        void SelectMode(DesktopAttachMode m)
         {
-            if (floatItem.Checked) DesktopWallpaperHost.DetachToWindow(this);
-            else DesktopWallpaperHost.Reattach(this);
+            modeAuto.Checked = m == DesktopAttachMode.AutoShell;
+            modeBottom.Checked = m == DesktopAttachMode.BottomMostWindow;
+            modeFloat.Checked = m == DesktopAttachMode.FloatingWindow;
+            Dispatcher.Invoke(() => DesktopWallpaperHost.SetMode(this, m));
+        }
+
+        modeAuto.Click += (_, _) => SelectMode(DesktopAttachMode.AutoShell);
+        modeBottom.Click += (_, _) => SelectMode(DesktopAttachMode.BottomMostWindow);
+        modeFloat.Click += (_, _) => SelectMode(DesktopAttachMode.FloatingWindow);
+        modeMenu.DropDownItems.AddRange([modeAuto, modeBottom, modeFloat]);
+        menu.Items.Add(modeMenu);
+
+        menu.Items.Add("Show Desktop Diagnostics…", null, (_, _) =>
+        {
+            var info = Dispatcher.Invoke(() => DesktopWallpaperHost.GetDiagnostics(this));
+            MessageBox.Show(info, "Kinetic Wallpaper Diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
         });
-        menu.Items.Add(floatItem);
-        menu.Items.Add("Re-attach to Desktop Layer", null, (_, _) => Dispatcher.Invoke(() => { floatItem.Checked = false; DesktopWallpaperHost.Reattach(this); }));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit Wallpaper", null, (_, _) => Dispatcher.Invoke(Close));
         _trayIcon.ContextMenuStrip = menu;

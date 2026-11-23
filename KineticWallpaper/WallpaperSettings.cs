@@ -62,7 +62,7 @@ public sealed class WallpaperSettings
             {
                 var exePath = Environment.ProcessPath;
                 if (!string.IsNullOrEmpty(exePath))
-                    key.SetValue("KineticLyricsWallpaper", $"{exePath}");
+                    key.SetValue("KineticLyricsWallpaper", $"\"{exePath}\"");
             }
             else
             {
