@@ -1,0 +1,7 @@
+# Kinetic Lyrics console prototype
+
+Windows 10/11 and .NET 10 SDK required. In this folder, run `dotnet run`. At the prompts, enter each music folder (without quotes, or drag it into the terminal); press Enter on an empty line to watch media sessions. Press Ctrl+C to exit. Folders can be rescanned on later runs by entering them again. The index is stored at `%LOCALAPPDATA%\KineticLyrics\library.db`.
+
+The app indexes basic audio metadata using TagLibSharp and SQLite. It matches exact normalized title and first artist, checks duration when available, and rejects ties. Local matches are guesses, not proof of the file being played. It checks TagLibSharp's standard Lyrics field for LRC timestamps, then a same-name .lrc file, then LRCLIB. Plain lyrics are not displayed. Nonstandard FLAC tag names, word-level timing, LRC offset tags and other formats are not yet supported. LRCLIB lookup requires internet access and uses exact title and artist; it may choose a different recording if results share those fields.
+
+This is an initial backend prototype, not the wallpaper. It polls Windows media sessions and therefore only works with players that expose one. It does not interpolate between timeline reports, automatically remember/rescan folder lists, remove stale rows, monitor filesystem changes, or implement artwork, audio visualization, or desktop rendering. Indexed paths that no longer exist are ignored.

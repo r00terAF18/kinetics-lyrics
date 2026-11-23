@@ -1,0 +1,623 @@
+{
+	"contentrating" : "Everyone",
+	"description" : "1986 vacuum-fluorescent-display spectrum deck. Audio-reactive spectrum / VU, now-playing info, two retro-cyberpunk themes, four enclosures and five acrylic filters. Enable \"Media integration\" in Wallpaper Engine settings to show the current track.",
+	"file" : "index.html",
+	"general" : 
+	{
+		"properties" : 
+		{
+			"aberration" : 
+			{
+				"fraction" : true,
+				"index" : 15,
+				"max" : 1,
+				"min" : 0,
+				"order" : 115,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Chromatic aberration / 色差",
+				"type" : "slider",
+				"value" : 0
+			},
+			"ambient" : 
+			{
+				"fraction" : true,
+				"index" : 20,
+				"max" : 1,
+				"min" : 0,
+				"order" : 120,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Ambient light spill / 環境光",
+				"type" : "slider",
+				"value" : 0.4
+			},
+			"appicon" : 
+			{
+				"index" : 25,
+				"options" : 
+				[
+					{
+						"label" : "Show / 顯示",
+						"value" : "color"
+					},
+					{
+						"label" : "Off / 不顯示",
+						"value" : "off"
+					}
+				],
+				"order" : 125,
+				"text" : "Source cell (speaker icon) / 音源格（喇叭圖示）",
+				"type" : "combo",
+				"value" : "color"
+			},
+			"autogain" : 
+			{
+				"index" : 6,
+				"order" : 106,
+				"text" : "Auto gain (AGC) / 自動增益",
+				"type" : "bool",
+				"value" : true
+			},
+			"barstyle" : 
+			{
+				"index" : 4,
+				"options" : 
+				[
+					{
+						"label" : "Fine segments ('92 mini hi-fi) / 細分段",
+						"value" : "fine"
+					},
+					{
+						"label" : "Segments / 分段柱",
+						"value" : "segments"
+					},
+					{
+						"label" : "Stereo mirror (L up, R down) / 立體聲鏡像",
+						"value" : "stereo"
+					},
+					{
+						"label" : "Dot matrix / 高密度點陣",
+						"value" : "dots"
+					},
+					{
+						"label" : "Trace / 光跡曲線",
+						"value" : "trace"
+					},
+					{
+						"label" : "Fan / 扇形",
+						"value" : "fan"
+					},
+					{
+						"label" : "Classic 9-band (1986) / 經典九段",
+						"value" : "classic"
+					},
+					{
+						"label" : "EQ sliders / 等化器推桿",
+						"value" : "eqdots"
+					},
+					{
+						"label" : "Center mirror (L | R) / 中央對稱",
+						"value" : "mirror"
+					},
+					{
+						"label" : "Waterfall spectrogram / 瀑布頻譜圖",
+						"value" : "waterfall"
+					},
+					{
+						"label" : "Ridgeline / 山脊線",
+						"value" : "ridgeline"
+					}
+				],
+				"order" : 104,
+				"text" : "Bar style / 頻譜柱樣式",
+				"type" : "combo",
+				"value" : "fine"
+			},
+			"bloom" : 
+			{
+				"fraction" : true,
+				"index" : 12,
+				"max" : 1.6,
+				"min" : 0,
+				"order" : 112,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Bloom / 泛光",
+				"type" : "slider",
+				"value" : 1
+			},
+			"bootanim" : 
+			{
+				"index" : 24,
+				"options" : 
+				[
+					{
+						"label" : "Auto (VZ201: real unit, others: lamp test) / 自動",
+						"value" : "auto"
+					},
+					{
+						"label" : "Real unit power-on (VZ201 video) / 實機開機",
+						"value" : "unit"
+					},
+					{
+						"label" : "Lamp test sweep / 燈測試",
+						"value" : "lamptest"
+					},
+					{
+						"label" : "None / 不播",
+						"value" : "off"
+					}
+				],
+				"order" : 124,
+				"text" : "Power-on animation / 開機動畫",
+				"type" : "combo",
+				"value" : "auto"
+			},
+			"brightness" : 
+			{
+				"fraction" : true,
+				"index" : 13,
+				"max" : 1.6,
+				"min" : 0.3,
+				"order" : 113,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Brightness / 亮度",
+				"type" : "slider",
+				"value" : 1
+			},
+			"clock12" : 
+			{
+				"index" : 22,
+				"order" : 122,
+				"text" : "12-hour clock / 12 小時制",
+				"type" : "bool",
+				"value" : false
+			},
+			"curve" : 
+			{
+				"fraction" : true,
+				"index" : 7,
+				"max" : 3,
+				"min" : 1,
+				"order" : 107,
+				"precision" : 2,
+				"step" : 0.1,
+				"text" : "Bass detail / 低頻細節",
+				"type" : "slider",
+				"value" : 1.7
+			},
+			"demo" : 
+			{
+				"index" : 28,
+				"options" : 
+				[
+					{
+						"label" : "Off / 關閉",
+						"value" : "0"
+					},
+					{
+						"label" : "After 1 minute of silence / 安靜 1 分鐘後",
+						"value" : "1"
+					},
+					{
+						"label" : "After 5 minutes of silence / 安靜 5 分鐘後",
+						"value" : "5"
+					},
+					{
+						"label" : "After 15 minutes of silence / 安靜 15 分鐘後",
+						"value" : "15"
+					}
+				],
+				"order" : 128,
+				"text" : "Showroom demo when idle / 閒置時店頭展示",
+				"type" : "combo",
+				"value" : "5"
+			},
+			"diagnostics" : 
+			{
+				"index" : 30,
+				"order" : 130,
+				"text" : "Diagnostics overlay / 診斷資訊",
+				"type" : "bool",
+				"value" : false
+			},
+			"doorvfd" : 
+			{
+				"index" : 23,
+				"order" : 123,
+				"text" : "Cassette door shows the track (car deck faceplate) / 卡帶倉顯示歌曲",
+				"type" : "bool",
+				"value" : true
+			},
+			"enclosure" : 
+			{
+				"index" : 3,
+				"options" : 
+				[
+					{
+						"label" : "Auto (theme; RX-1001V layout has its own) / 自動（跟主題；RX-1001V 格局用原機的）",
+						"value" : "auto"
+					},
+					{
+						"label" : "Black anodized aluminium",
+						"value" : "anodized"
+					},
+					{
+						"label" : "Vintage silver Hi-Fi",
+						"value" : "silver"
+					},
+					{
+						"label" : "Lab cream (Tektronix)",
+						"value" : "cream"
+					},
+					{
+						"label" : "19-inch rack graphite",
+						"value" : "rack"
+					},
+					{
+						"label" : "HUD tech lines / 科技線框",
+						"value" : "hud"
+					},
+					{
+						"label" : "Avionics instrument gray / 航電儀器灰",
+						"value" : "avionics"
+					},
+					{
+						"label" : "Car head unit / 車用音響主機",
+						"value" : "headunit"
+					},
+					{
+						"label" : "AV receiver faceplate / AV 擴大機面板",
+						"value" : "receiver"
+					},
+					{
+						"label" : "1990 car cassette deck faceplate / 車用卡帶主機面板",
+						"value" : "cardeck"
+					},
+					{
+						"label" : "1990 hi-fi graphic equalizer faceplate / 家用等化器面板",
+						"value" : "eqdeck"
+					}
+				],
+				"order" : 103,
+				"text" : "Enclosure / 機殼",
+				"type" : "combo",
+				"value" : "auto"
+			},
+			"fall" : 
+			{
+				"fraction" : true,
+				"index" : 8,
+				"max" : 2.5,
+				"min" : 0.15,
+				"order" : 108,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Bar fall speed / 下落速度",
+				"type" : "slider",
+				"value" : 0.7
+			},
+			"filter" : 
+			{
+				"index" : 2,
+				"options" : 
+				[
+					{
+						"label" : "Auto (theme; RX-1001V layout has its own) / 自動（跟主題；RX-1001V 格局用原機的）",
+						"value" : "auto"
+					},
+					{
+						"label" : "Smoked",
+						"value" : "smoked"
+					},
+					{
+						"label" : "Teal",
+						"value" : "teal"
+					},
+					{
+						"label" : "Deep blue",
+						"value" : "blue"
+					},
+					{
+						"label" : "Amber",
+						"value" : "amber"
+					},
+					{
+						"label" : "Clear",
+						"value" : "clear"
+					},
+					{
+						"label" : "Neon cyan + yellow / 霓虹青黃",
+						"value" : "neon"
+					},
+					{
+						"label" : "HUD red + cyan / 介面紅",
+						"value" : "redline"
+					},
+					{
+						"label" : "Car VFD aqua + orange / 車機藍綠",
+						"value" : "carvfd"
+					},
+					{
+						"label" : "Orange-red / 橘紅",
+						"value" : "orangered"
+					},
+					{
+						"label" : "Orange (late-80s AV receiver) / 橘色",
+						"value" : "orange"
+					},
+					{
+						"label" : "Indigo (2000s car head unit) / 靛藍",
+						"value" : "indigo"
+					},
+					{
+						"label" : "Aqua + lime (1990 car deck) / 青綠萊姆",
+						"value" : "aqualime"
+					},
+					{
+						"label" : "Ice white + red (early-90s hi-fi EQ) / 冰白",
+						"value" : "icewhite"
+					}
+				],
+				"order" : 102,
+				"text" : "Acrylic filter / 濾鏡",
+				"type" : "combo",
+				"value" : "auto"
+			},
+			"layout" : 
+			{
+				"index" : 1,
+				"options" : 
+				[
+					{
+						"label" : "Mini hi-fi stack '92 (CH-900 style) / 90 年代組合音響",
+						"value" : "ch900"
+					},
+					{
+						"label" : "AV receiver '88 (RX-1001V style) / 80 年代 AV 擴大機",
+						"value" : "rx1001"
+					},
+					{
+						"label" : "Car MD/CD receiver '04 (DPX-5200M style) / 2000 年代車用主機",
+						"value" : "dpx5200"
+					},
+					{
+						"label" : "Car cassette deck '90 (VZ201 G-1 style) / 1990 車用卡帶主機",
+						"value" : "vz201"
+					},
+					{
+						"label" : "Graphic equalizer '90 (SH-GE70 style) / 1990 家用等化器",
+						"value" : "ge70"
+					},
+					{
+						"label" : "Classic VFD-86 / 經典",
+						"value" : "classic"
+					}
+				],
+				"order" : 101,
+				"text" : "Panel layout / 面板格局",
+				"type" : "combo",
+				"value" : "ch900"
+			},
+			"mesh" : 
+			{
+				"fraction" : true,
+				"index" : 16,
+				"max" : 1,
+				"min" : 0,
+				"order" : 116,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Control-grid mesh / 網目",
+				"type" : "slider",
+				"value" : 0.25
+			},
+			"panelsize" : 
+			{
+				"fraction" : true,
+				"index" : 26,
+				"max" : 1,
+				"min" : 0.6,
+				"order" : 126,
+				"precision" : 2,
+				"step" : 0.01,
+				"text" : "Panel size / 面板大小",
+				"type" : "slider",
+				"value" : 0.94
+			},
+			"persistence" : 
+			{
+				"fraction" : true,
+				"index" : 10,
+				"max" : 1,
+				"min" : 0,
+				"order" : 110,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Phosphor persistence / 餘暉",
+				"type" : "slider",
+				"value" : 0.35
+			},
+			"portraitstack" : 
+			{
+				"index" : 27,
+				"order" : 127,
+				"text" : "Portrait screen: stack extra units (tuner · analyzer · deck) / 直立螢幕疊放搭配機器",
+				"type" : "bool",
+				"value" : true
+			},
+			"punch" : 
+			{
+				"fraction" : true,
+				"index" : 9,
+				"max" : 1,
+				"min" : 0,
+				"order" : 109,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Kick punch / 重低音衝擊",
+				"type" : "slider",
+				"value" : 0.6
+			},
+			"quality" : 
+			{
+				"fraction" : true,
+				"index" : 29,
+				"max" : 1,
+				"min" : 0.4,
+				"order" : 129,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Render quality / 渲染品質",
+				"type" : "slider",
+				"value" : 1
+			},
+			"reflection" : 
+			{
+				"fraction" : true,
+				"index" : 17,
+				"max" : 1.5,
+				"min" : 0,
+				"order" : 117,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Glass reflection / 玻璃反光",
+				"type" : "slider",
+				"value" : 0.6
+			},
+			"refresh" : 
+			{
+				"index" : 11,
+				"options" : 
+				[
+					{
+						"label" : "Smooth (every frame) / 滑順（每幀）",
+						"value" : "0"
+					},
+					{
+						"label" : "MCU 30 Hz / 單晶片 30 Hz",
+						"value" : "30"
+					},
+					{
+						"label" : "MCU 20 Hz (late-80s analyzer) / 單晶片 20 Hz",
+						"value" : "20"
+					},
+					{
+						"label" : "MCU 12 Hz (very retro) / 單晶片 12 Hz",
+						"value" : "12"
+					}
+				],
+				"order" : 111,
+				"text" : "Display refresh / 顯示更新率",
+				"type" : "combo",
+				"value" : "0"
+			},
+			"scanlines" : 
+			{
+				"fraction" : true,
+				"index" : 14,
+				"max" : 1,
+				"min" : 0,
+				"order" : 114,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Scanlines / 掃描線",
+				"type" : "slider",
+				"value" : 0
+			},
+			"schemecolor" : 
+			{
+				"order" : 0,
+				"text" : "ui_browse_properties_scheme_color",
+				"type" : "color",
+				"value" : "0 0 0"
+			},
+			"sensitivity" : 
+			{
+				"fraction" : true,
+				"index" : 5,
+				"max" : 6,
+				"min" : 0.2,
+				"order" : 105,
+				"precision" : 2,
+				"step" : 0.1,
+				"text" : "Audio sensitivity / 靈敏度",
+				"type" : "slider",
+				"value" : 1.4
+			},
+			"showclock" : 
+			{
+				"index" : 21,
+				"order" : 121,
+				"text" : "Show clock / 顯示時鐘",
+				"type" : "bool",
+				"value" : true
+			},
+			"smudge" : 
+			{
+				"fraction" : true,
+				"index" : 18,
+				"max" : 1,
+				"min" : 0,
+				"order" : 118,
+				"precision" : 2,
+				"step" : 0.05,
+				"text" : "Glass dust & fingerprints / 玻璃灰塵指紋",
+				"type" : "slider",
+				"value" : 0.3
+			},
+			"theme" : 
+			{
+				"index" : 0,
+				"options" : 
+				[
+					{
+						"label" : "A · Showa Hi-Fi (昭和)",
+						"value" : "A"
+					},
+					{
+						"label" : "B · Retro-Future Deck (美式甲板)",
+						"value" : "B"
+					},
+					{
+						"label" : "C · Cyberpunk neon (賽博龐克霓虹)",
+						"value" : "C"
+					},
+					{
+						"label" : "D · 1986 Car Audio (車用音響)",
+						"value" : "D"
+					}
+				],
+				"order" : 100,
+				"text" : "Theme / 主題",
+				"type" : "combo",
+				"value" : "D"
+			},
+			"wear" : 
+			{
+				"fraction" : false,
+				"index" : 19,
+				"max" : 40,
+				"min" : 0,
+				"order" : 119,
+				"step" : 1,
+				"text" : "Years of use (phosphor wear) / 使用年數（螢光粉老化）",
+				"type" : "slider",
+				"value" : 12
+			}
+		},
+		"supportsaudioprocessing" : true
+	},
+	"preview" : "preview.gif",
+	"ratingsex" : "none",
+	"ratingviolence" : "none",
+	"tags" : [ "Retro" ],
+	"title" : "retro-80s VFD-car audio",
+	"type" : "web",
+	"version" : 1,
+	"visibility" : "public",
+	"workshopid" : "3811464116",
+	"workshopurl" : "steam://url/CommunityFilePage/3811464116"
+}
