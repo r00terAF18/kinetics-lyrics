@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -6,81 +5,108 @@ using Microsoft.Win32;
 
 namespace KineticWallpaper;
 
-// Explorer's desktop windows are undocumented and can change between Windows builds.
 public static class DesktopWallpaperHost
 {
+    private const uint WmSpawnWorker = 0x052C;
+    private const int GwlStyle = -16;
+    private const int GwlExStyle = -20;
+    private const nint WsChild = 0x40000000;
+    private const nint WsPopup = unchecked((int)0x80000000);
+    private const nint WsExNoActivate = 0x08000000;
+    private const nint WsExToolWindow = 0x00000080;
+    private const uint SpiSetDeskWallpaper = 0x0014;
+    private const uint SpifSendChange = 0x0002;
+
+    private delegate bool EnumWindowsProc(nint hwnd, nint lParam);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern nint FindWindow(string? lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern nint FindWindowEx(nint parentHandle, nint childAfter, string? className, string? windowTitle);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint SendMessageTimeout(nint hWnd, uint msg, nint wParam, nint lParam, uint fuFlags, uint uTimeout, out nint lpdwResult);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumChildWindows(nint hWndParent, EnumWindowsProc lpEnumFunc, nint lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint SetParent(nint hWndChild, nint hWndNewParent);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+    private static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+    private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool MoveWindow(nint hWnd, int x, int y, int width, int height, bool repaint);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string? pvParam, uint fWinIni);
+
     public static void Attach(Window window)
     {
-        var progman = FindWindow("Progman", null);
-        if (progman == IntPtr.Zero) throw new InvalidOperationException("Explorer's Progman window was not found.");
-        SendMessageTimeout(progman, 0x052C, new IntPtr(0xD), new IntPtr(1), 0, 1000, out _);
-        IntPtr worker = IntPtr.Zero;
-        bool aboveIcons = Environment.GetCommandLineArgs().Contains("--above-icons", StringComparer.OrdinalIgnoreCase);
-        var iconView = FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null);
-        // On modern Explorer the wallpaper WorkerW is a direct child of Progman.
-        if (iconView != IntPtr.Zero)
-            worker = FindWindowEx(progman, IntPtr.Zero, "WorkerW", null);
-        if (worker == IntPtr.Zero)
-        {
-            EnumWindows((top, _) =>
-            {
-                if (FindWindowEx(top, IntPtr.Zero, "SHELLDLL_DefView", null) == IntPtr.Zero) return true;
-                worker = FindWindowEx(IntPtr.Zero, top, "WorkerW", null);
-                return worker == IntPtr.Zero;
-            }, IntPtr.Zero);
-        }
-        if (worker == IntPtr.Zero) throw new InvalidOperationException("Could not locate Explorer's wallpaper WorkerW.");
-        if (aboveIcons)
-        {
-            if (iconView == IntPtr.Zero) throw new InvalidOperationException("Above-icons diagnostic requires the modern Progman desktop layout.");
-            worker = progman;
-        }
         var hwnd = new WindowInteropHelper(window).EnsureHandle();
-        int style = GetWindowLong(hwnd, -16);
-        SetStyle(hwnd, -16, (style & ~unchecked((int)0x80000000)) | 0x40000000);
-        int exstyle = GetWindowLong(hwnd, -20);
-        SetStyle(hwnd, -20, exstyle | 0x08000080);
-        Marshal.SetLastPInvokeError(0);
-        var previous = SetParent(hwnd, worker);
-        if (previous == IntPtr.Zero && Marshal.GetLastPInvokeError() != 0) Fail("SetParent");
-        Fit();
-        void OnDisplayChanged(object? sender, EventArgs args)
-        {
-            if (!window.Dispatcher.HasShutdownStarted) window.Dispatcher.BeginInvoke((Action)Fit);
-        }
-        SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+        var workerW = GetOrCreateWorkerW();
+        if (workerW == 0) return;
+
+        var style = GetWindowLongPtr(hwnd, GwlStyle);
+        SetWindowLongPtr(hwnd, GwlStyle, (style & ~WsPopup) | WsChild);
+
+        var exStyle = GetWindowLongPtr(hwnd, GwlExStyle);
+        SetWindowLongPtr(hwnd, GwlExStyle, exStyle | WsExNoActivate | WsExToolWindow);
+
+        SetParent(hwnd, workerW);
+        FitToVirtualScreen(hwnd);
+
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         window.Closed += (_, _) =>
         {
-            SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
-            // Invalidate Explorer's desktop rather than changing the user's wallpaper settings.
-            RedrawWindow(worker, IntPtr.Zero, IntPtr.Zero, 0x0001 | 0x0080 | 0x0100);
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            SetParent(hwnd, 0);
+            SystemParametersInfo(SpiSetDeskWallpaper, 0, null, SpifSendChange);
         };
-        void Fit()
-        {
-            var origin = new PointNative { X = GetSystemMetrics(76), Y = GetSystemMetrics(77) };
-            if (!ScreenToClient(worker, ref origin)) Fail("ScreenToClient");
-            uint flags = 0x0010 | 0x0020 | 0x0040; // no activation, frame changed, show
-            if (!aboveIcons) flags |= 0x0004; // preserve z-order normally; HWND_TOP for the diagnostic
-            if (!SetWindowPos(hwnd, IntPtr.Zero, origin.X, origin.Y, GetSystemMetrics(78), GetSystemMetrics(79), flags)) Fail("SetWindowPos");
-        }
+
+        void OnDisplaySettingsChanged(object? sender, EventArgs e) =>
+            window.Dispatcher.InvokeAsync(() => FitToVirtualScreen(hwnd));
     }
-    private static void SetStyle(IntPtr h, int index, int value)
+
+    private static void FitToVirtualScreen(nint hwnd)
     {
-        Marshal.SetLastPInvokeError(0);
-        if (SetWindowLong(h, index, value) == 0 && Marshal.GetLastPInvokeError() != 0) Fail("SetWindowLong");
+        int width = (int)SystemParameters.VirtualScreenWidth;
+        int height = (int)SystemParameters.VirtualScreenHeight;
+        MoveWindow(hwnd, 0, 0, width, height, true);
     }
-    private static void Fail(string action) => throw new Win32Exception(Marshal.GetLastPInvokeError(), action + " failed");
-    [StructLayout(LayoutKind.Sequential)] private struct PointNative { public int X, Y; }
-    private delegate bool EnumProc(IntPtr hwnd, IntPtr param);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string name, string? title);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? name, string? title);
-    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr param);
-    [DllImport("user32.dll")] private static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint msg, IntPtr wp, IntPtr lp, uint flags, uint timeout, out IntPtr result);
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] private static extern int GetWindowLong(IntPtr hwnd, int index);
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)] private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
-    [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr SetParent(IntPtr hwnd, IntPtr parent);
-    [DllImport("user32.dll", SetLastError = true)] private static extern bool ScreenToClient(IntPtr hwnd, ref PointNative point);
-    [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int width, int height, uint flags);
-    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
-    [DllImport("user32.dll")] private static extern bool RedrawWindow(IntPtr hwnd, IntPtr rect, IntPtr region, uint flags);
+
+    private static nint GetOrCreateWorkerW()
+    {
+        var progman = FindWindow("Progman", null);
+        if (progman == 0) return 0;
+
+        SendMessageTimeout(progman, WmSpawnWorker, 0xD, 0x1, 0, 1000, out _);
+
+        nint workerW = 0;
+        bool MatchWorker(nint topHandle, nint _)
+        {
+            if (FindWindowEx(topHandle, 0, "SHELLDLL_DefView", null) == 0)
+                return true;
+
+            workerW = FindWindowEx(0, topHandle, "WorkerW", null);
+            if (workerW == 0)
+                workerW = FindWindowEx(progman, topHandle, "WorkerW", null);
+
+            return workerW == 0;
+        }
+
+        EnumWindows(MatchWorker, 0);
+        if (workerW == 0)
+            EnumChildWindows(progman, MatchWorker, 0);
+
+        return workerW;
+    }
 }

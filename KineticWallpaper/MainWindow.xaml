@@ -1,12 +1,68 @@
 <Window x:Class="KineticWallpaper.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Kinetic Wallpaper" Height="250" Width="480"
-        WindowStartupLocation="CenterScreen">
-    <StackPanel Margin="22">
-        <TextBlock FontSize="20" FontWeight="SemiBold" Text="Kinetic Wallpaper — prototype"/>
-        <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Text="Keep this window open while using the wallpaper. Use the console prototype to index music folders. Closing this window restores your previous desktop."/>
-        <TextBlock x:Name="Status" Margin="0,12,0,0" TextWrapping="Wrap" Text="Starting…"/>
-        <Button Margin="0,14,0,0" Width="110" HorizontalAlignment="Left" Content="Exit" Click="Exit_Click"/>
-    </StackPanel>
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="#08080B">
+    <Grid x:Name="RootGrid" ClipToBounds="True">
+        <Image x:Name="BackgroundArt" Stretch="UniformToFill" Opacity="0.55" RenderTransformOrigin="0.5,0.5">
+            <Image.Effect>
+                <BlurEffect Radius="65" KernelType="Gaussian" />
+            </Image.Effect>
+            <Image.RenderTransform>
+                <ScaleTransform ScaleX="1.15" ScaleY="1.15" />
+            </Image.RenderTransform>
+        </Image>
+
+        <Rectangle x:Name="DimLayer" Fill="#08080B" Opacity="0.55" />
+
+        <Ellipse x:Name="AmbientLight" Width="1100" Height="1100" Opacity="0.22" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop x:Name="LightStopCenter" Color="#FF4D6D" Offset="0.0" />
+                    <GradientStop x:Name="LightStopMid" Color="#66FF4D6D" Offset="0.35" />
+                    <GradientStop Color="#00000000" Offset="0.72" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+            <Ellipse.RenderTransform>
+                <ScaleTransform x:Name="LightScale" ScaleX="1" ScaleY="1" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+
+        <Canvas x:Name="Stage" ClipToBounds="True" RenderTransformOrigin="0.5,0.5">
+            <Canvas.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="CameraScale" ScaleX="1" ScaleY="1" />
+                    <RotateTransform x:Name="CameraRotate" Angle="0" />
+                </TransformGroup>
+            </Canvas.RenderTransform>
+        </Canvas>
+
+        <Border x:Name="HudCard" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="48,0,0,56" IsHitTestVisible="False">
+            <StackPanel Orientation="Horizontal">
+                <Border Width="56" Height="56" CornerRadius="6" Background="#1D1D24" ClipToBounds="True" Margin="0,0,14,0">
+                    <Image x:Name="HudAlbumArt" Stretch="UniformToFill" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="HudTitle" Foreground="#F4F1EA" FontFamily="Segoe UI" FontWeight="Bold" FontSize="16" MaxWidth="420" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="HudArtist" Foreground="#B4B0A8" FontFamily="Segoe UI" FontSize="13" Margin="0,2,0,6" MaxWidth="420" TextTrimming="CharacterEllipsis" />
+                    <Grid Width="200" Height="3">
+                        <Rectangle Fill="#28FFFFFF" RadiusX="1.5" RadiusY="1.5" />
+                        <Rectangle x:Name="HudProgress" Fill="#FF4D6D" Width="0" HorizontalAlignment="Left" RadiusX="1.5" RadiusY="1.5" />
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <StackPanel x:Name="StatusPanel" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,48,56" Orientation="Vertical">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,6" Opacity="0.45">
+                <Button Content="« earlier" Click="OnSyncEarlier" Padding="6,2" Margin="0,0,4,0" Background="#1AFFFFFF" Foreground="#F4F1EA" BorderThickness="0" FontFamily="Consolas" FontSize="11" />
+                <TextBlock x:Name="SyncOffsetText" Text="0.00s" Foreground="#F4F1EA" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Margin="4,0" />
+                <Button Content="later »" Click="OnSyncLater" Padding="6,2" Margin="4,0,4,0" Background="#1AFFFFFF" Foreground="#F4F1EA" BorderThickness="0" FontFamily="Consolas" FontSize="11" />
+                <Button Content="↺" Click="OnSyncReset" Padding="6,2" Background="#1AFFFFFF" Foreground="#F4F1EA" BorderThickness="0" FontFamily="Consolas" FontSize="11" />
+            </StackPanel>
+            <TextBlock x:Name="StatusText" Text="WAITING FOR MUSIC" HorizontalAlignment="Right" Foreground="#88F4F1EA" FontFamily="Consolas" FontSize="11" />
+        </StackPanel>
+    </Grid>
 </Window>

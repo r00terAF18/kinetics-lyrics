@@ -1,74 +1,187 @@
+using System.Diagnostics;
 using Windows.Media.Control;
+using Windows.Storage.Streams;
 
 namespace KineticLyrics;
 
-public record PlaybackState(string Title, string Artist, string Album, bool IsPlaying,
-    double Position, double Duration, Lyrics? Lyrics, int LineIndex);
+public record MediaSnapshot(
+    string Title,
+    string Artist,
+    string Album,
+    bool IsPlaying,
+    double InterpolatedPosition,
+    double Duration,
+    byte[]? ThumbnailBytes,
+    Lyrics? Lyrics,
+    string StatusText);
 
-public static class MediaMonitor
+public sealed class MediaMonitor
 {
-    public static Task RunAsync(MusicLibrary library, CancellationToken ct) => RunAsync(library, null, ct);
+    private readonly MusicLibrary _library;
+    private double _basePos;
+    private long _baseTicks;
+    private double _lastReportedPos = -1;
+    private long _lastReportTicks;
+    private readonly List<double> _phaseResiduals = [];
+    private double _phaseCorrection = 0.25;
+    private bool _isPlaying;
+    private double _duration;
+    private string _title = "";
+    private string _artist = "";
+    private string _album = "";
+    private byte[]? _thumbnail;
+    private Lyrics? _lyrics;
+    private string _status = "Waiting for media…";
+    private string? _sessionKey;
+    private int _requestVersion;
 
-    public static async Task RunAsync(MusicLibrary library, Action<PlaybackState>? onUpdate, CancellationToken ct)
+    public MediaMonitor(MusicLibrary library) => _library = library;
+
+    public double CurrentPosition =>
+        _basePos + (_isPlaying ? Stopwatch.GetElapsedTime(_baseTicks).TotalSeconds : 0) + _phaseCorrection;
+
+    public MediaSnapshot GetSnapshot() =>
+        new(_title, _artist, _album, _isPlaying, CurrentPosition, _duration, _thumbnail, _lyrics, _status);
+
+    public async Task RunAsync(CancellationToken ct)
     {
         var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-        string? key = null;
-        Lyrics? lyrics = null;
-        int lastLine = -2;
-        if (onUpdate is null) Console.WriteLine("Watching media sessions. Play a song in a supported player.");
-        while (true)
+        while (!ct.IsCancellationRequested)
         {
-            ct.ThrowIfCancellationRequested();
-            var session = manager.GetCurrentSession();
-            if (session is null)
-            {
-                if (key is not null)
-                {
-                    key = null; lyrics = null; lastLine = -2;
-                    if (onUpdate is null) Console.WriteLine("No media session.");
-                    else onUpdate(new("", "", "", false, 0, 0, null, -1));
-                }
-                await Task.Delay(500, ct);
-                continue;
-            }
             try
             {
-                var properties = await session.TryGetMediaPropertiesAsync();
+                var session = manager.GetCurrentSession();
+                if (session is null)
+                {
+                    if (_sessionKey is not null)
+                    {
+                        _sessionKey = null;
+                        _title = "";
+                        _artist = "";
+                        _album = "";
+                        _thumbnail = null;
+                        _lyrics = null;
+                        _isPlaying = false;
+                        _status = "Idle — play a track";
+                    }
+                    await Task.Delay(400, ct);
+                    continue;
+                }
+
+                var props = await session.TryGetMediaPropertiesAsync();
                 var timeline = session.GetTimelineProperties();
                 var playback = session.GetPlaybackInfo();
-                string title = properties.Title ?? "", artist = properties.Artist ?? "", album = properties.AlbumTitle ?? "";
+
+                var title = props.Title ?? "";
+                var artist = props.Artist ?? "";
+                var album = props.AlbumTitle ?? "";
                 var newKey = $"{session.SourceAppUserModelId}\n{title}\n{artist}\n{album}";
+
                 bool playing = playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
-                double position = timeline.Position.TotalSeconds, duration = timeline.EndTime.TotalSeconds;
-                if (newKey != key)
+                if (playing != _isPlaying)
                 {
-                    key = newKey; lastLine = -2; lyrics = null;
-                    if (onUpdate is null) Console.WriteLine($"\n{title} — {artist} ({album})");
-                    else onUpdate(new(title, artist, album, playing, position, duration, null, -1));
-                    var track = library.Match(title, artist, album, duration);
-                    if (onUpdate is null) Console.WriteLine(track is null ? "No unique local match; trying online." : $"Probable local file: {track.Path}");
-                    lyrics = await LyricsResolver.ResolveAsync(track, title, artist, ct);
-                    if (onUpdate is null) Console.WriteLine(lyrics is null ? "No synchronized lyrics found." : $"Lyrics: {lyrics.Source}");
-                    continue; // Verify the session again after potentially slow lookup.
+                    _basePos = _basePos + (_isPlaying ? Stopwatch.GetElapsedTime(_baseTicks).TotalSeconds : 0);
+                    _baseTicks = Stopwatch.GetTimestamp();
+                    _isPlaying = playing;
                 }
-                int index = -1;
-                if (lyrics is not null)
-                    for (int i = 0; i < lyrics.Lines.Count && lyrics.Lines[i].Time <= position; i++) index = i;
-                if (index != lastLine)
+
+                if (timeline.EndTime.TotalSeconds > 0)
+                    _duration = timeline.EndTime.TotalSeconds;
+
+                UpdateTimeline(timeline.Position.TotalSeconds);
+
+                if (newKey != _sessionKey && !string.IsNullOrWhiteSpace(title))
                 {
-                    lastLine = index;
-                    if (onUpdate is null && playing && lyrics is not null && index >= 0)
-                        Console.WriteLine($"[{TimeSpan.FromSeconds(position):mm\\:ss}] {lyrics.Lines[index].Text}");
+                    _sessionKey = newKey;
+                    _title = title;
+                    _artist = artist;
+                    _album = album;
+                    _lyrics = null;
+                    _thumbnail = await ReadThumbnailAsync(props.Thumbnail);
+                    _status = "Searching lyrics…";
+
+                    int reqId = ++_requestVersion;
+                    _ = Task.Run(async () =>
+                    {
+                        var track = _library.Match(title, artist, album, _duration);
+                        var resolved = await LyricsResolver.ResolveAsync(track, title, artist, album, _duration, ct);
+                        if (reqId != _requestVersion) return;
+                        _lyrics = resolved;
+                        _status = resolved is null
+                            ? "No synced lyrics"
+                            : $"{resolved.Source}{(resolved.IsWordSynced ? " · word-synced" : "")}";
+                    }, ct);
                 }
-                onUpdate?.Invoke(new(title, artist, album, playing, position, duration, lyrics, index));
             }
             catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
             {
-                if (onUpdate is null) Console.WriteLine($"Media session changed: {ex.Message}");
-                else onUpdate(new("", "", "", false, 0, 0, null, -1));
-                key = null; lyrics = null; lastLine = -2;
+                _sessionKey = null;
+                _isPlaying = false;
             }
-            await Task.Delay(250, ct);
+
+            await Task.Delay(120, ct);
+        }
+    }
+
+    private void UpdateTimeline(double reportedPos)
+    {
+        if (double.IsNaN(reportedPos) || reportedPos < 0 || reportedPos > 36000) return;
+        long now = Stopwatch.GetTimestamp();
+
+        if (_lastReportedPos < 0)
+        {
+            _lastReportedPos = reportedPos;
+            _lastReportTicks = now;
+            _basePos = reportedPos;
+            _baseTicks = now;
+            _phaseResiduals.Clear();
+            return;
+        }
+
+        if (Math.Abs(reportedPos - _lastReportedPos) < 0.02) return;
+
+        double dt = Stopwatch.GetElapsedTime(_lastReportTicks, now).TotalSeconds;
+        double adv = reportedPos - _lastReportedPos;
+        _lastReportedPos = reportedPos;
+        _lastReportTicks = now;
+
+        double clock = _basePos + (_isPlaying ? Stopwatch.GetElapsedTime(_baseTicks, now).TotalSeconds : 0);
+        double est = clock + _phaseCorrection;
+        bool seek = adv < -1.6 || adv > dt + 2.2 || est < reportedPos - 1.8 || est > reportedPos + 2.8;
+
+        if (seek || !_isPlaying)
+        {
+            _basePos = reportedPos;
+            _baseTicks = now;
+            _phaseResiduals.Clear();
+            _phaseCorrection = 0.25;
+        }
+        else
+        {
+            _phaseResiduals.Add(reportedPos - clock);
+            if (_phaseResiduals.Count > 14) _phaseResiduals.RemoveAt(0);
+            double maxLowerBound = _phaseResiduals.Max();
+            _phaseCorrection = maxLowerBound + 1.15 / (_phaseResiduals.Count + 1);
+        }
+    }
+
+    private static async Task<byte[]?> ReadThumbnailAsync(IRandomAccessStreamReference? thumbRef)
+    {
+        if (thumbRef is null) return null;
+        try
+        {
+            using var stream = await thumbRef.OpenReadAsync();
+            using var reader = new DataReader(stream.GetInputStreamAt(0));
+            uint size = (uint)stream.Size;
+            if (size == 0) return null;
+            await reader.LoadAsync(size);
+            var bytes = new byte[size];
+            reader.ReadBytes(bytes);
+            return bytes;
+        }
+        catch
+        {
+            return null;
         }
     }
 }
