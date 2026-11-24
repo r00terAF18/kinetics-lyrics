@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kinetic Lyrics Wallpaper</string>
+    <string name="wallpaper_description">GPU-accelerated kinetic typography synchronized to your music.</string>
+</resources>
