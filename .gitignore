@@ -817,3 +817,8 @@ $RECYCLE.BIN/
 # Additional files built by Visual Studio
 .tools/
 # End of https://www.toptal.com/developers/gitignore/api/csharp,rider,jetbrains+all,windows,visualstudiocode,visualstudio,rust,c++,go
+
+.projectmem/events.jsonl
+.projectmem/watch.pid
+.projectmem/watch.log
+.projectmem/structure.json

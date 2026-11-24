@@ -32,7 +32,7 @@ public sealed class WallpaperSettings
     public bool LowPower { get; set; } = false;
     public string TargetMonitor { get; set; } = "PRIMARY";
     public string Monitors { get; set; } = "";
-    public int TargetFps { get; set; } = 30;
+    public int TargetFps { get; set; } = 60;
     public List<string> MusicFolders { get; set; } = [];
 
     private static string FilePath => Path.Combine(

@@ -20,6 +20,12 @@ public partial class MainWindow : Window
     timeline: [],
     audio: []
   };
+  const latest = {};
+  const registerLatest = (channel, fn) => {
+    if (typeof fn !== 'function') return;
+    listeners[channel].push(fn);
+    if (latest[channel]) { try { fn(latest[channel]); } catch (e) {} }
+  };
 
   window.wallpaperMediaIntegration = {
     PLAYBACK_PLAYING: 1,
@@ -28,7 +34,7 @@ public partial class MainWindow : Window
   };
 
   window.__klLocalLrc = null;
-  window.__klTargetFps = 30;
+  window.__klTargetFps = 60;
 
   // Frame-rate limiter to keep GPU/DWM load minimal
   const origRaf = window.requestAnimationFrame.bind(window);
@@ -48,10 +54,10 @@ public partial class MainWindow : Window
   };
 
   window.wallpaperRegisterMediaStatusListener = fn => { if (typeof fn === 'function') { listeners.status.push(fn); fn({ enabled: true }); } };
-  window.wallpaperRegisterMediaPropertiesListener = fn => { if (typeof fn === 'function') listeners.props.push(fn); };
-  window.wallpaperRegisterMediaThumbnailListener = fn => { if (typeof fn === 'function') listeners.thumb.push(fn); };
-  window.wallpaperRegisterMediaPlaybackListener = fn => { if (typeof fn === 'function') listeners.playback.push(fn); };
-  window.wallpaperRegisterMediaTimelineListener = fn => { if (typeof fn === 'function') listeners.timeline.push(fn); };
+  window.wallpaperRegisterMediaPropertiesListener = fn => registerLatest('props', fn);
+  window.wallpaperRegisterMediaThumbnailListener = fn => registerLatest('thumb', fn);
+  window.wallpaperRegisterMediaPlaybackListener = fn => registerLatest('playback', fn);
+  window.wallpaperRegisterMediaTimelineListener = fn => registerLatest('timeline', fn);
   window.wallpaperRegisterAudioListener = fn => { if (typeof fn === 'function') listeners.audio.push(fn); };
 
   // Prioritize local embedded tags / .lrc sidecar files before online LRCLIB/NetEase lookup
@@ -94,16 +100,20 @@ public partial class MainWindow : Window
           window.__klTargetFps = msg.data || 0;
           break;
         case 'props':
+          latest.props = msg.data;
           window.__klLocalLrc = null;
           listeners.props.forEach(fn => { try { fn(msg.data); } catch (e) {} });
           break;
         case 'thumb':
+          latest.thumb = msg.data;
           listeners.thumb.forEach(fn => { try { fn(msg.data); } catch (e) {} });
           break;
         case 'playback':
+          latest.playback = msg.data;
           listeners.playback.forEach(fn => { try { fn(msg.data); } catch (e) {} });
           break;
         case 'timeline':
+          latest.timeline = msg.data;
           listeners.timeline.forEach(fn => { try { fn(msg.data); } catch (e) {} });
           break;
         case 'audio':
@@ -519,8 +529,8 @@ public partial class MainWindow : Window
         var perfMenu = new Forms.ToolStripMenuItem("Performance");
         foreach (var (label, fps) in new[]
         {
-            ("30 FPS (Recommended, Low GPU)", 30),
-            ("60 FPS (Uncapped)", 60),
+            ("60 FPS (GPU Accelerated, Recommended)", 60),
+            ("30 FPS (Low GPU)", 30),
             ("24 FPS (Battery Saver)", 24)
         })
         {
@@ -529,7 +539,7 @@ public partial class MainWindow : Window
             {
                 _settings.TargetFps = fps;
                 _settings.Save();
-                foreach (Forms.ToolStripMenuItem sibling in perfMenu.DropDownItems) sibling.Checked = false;
+                foreach (var sibling in perfMenu.DropDownItems.OfType<Forms.ToolStripMenuItem>()) sibling.Checked = false;
                 item.Checked = true;
                 PostWebMessage("fps", fps);
             };
