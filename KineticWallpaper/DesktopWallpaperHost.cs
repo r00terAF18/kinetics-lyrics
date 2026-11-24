@@ -135,7 +135,12 @@ public static class DesktopWallpaperHost
         void OnUserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
         {
             if (e.Category is UserPreferenceCategory.Desktop or UserPreferenceCategory.General)
-                window.Dispatcher.InvokeAsync(() => ApplyMode(window, hwnd));
+                window.Dispatcher.InvokeAsync(() =>
+                {
+                    var parent = GetParent(hwnd);
+                    if (CurrentMode == DesktopAttachMode.AutoShell && (parent == 0 || !IsWindow(parent)))
+                        ApplyMode(window, hwnd);
+                });
         }
     }
 
@@ -267,15 +272,26 @@ public static class DesktopWallpaperHost
             bool raised = shellDefView != 0 && (GetWindowLongPtr(progman, GwlExStyle) & WsExNoRedirectionBitmap) != 0;
             if (raised)
             {
-                if ((GetWindowLongPtr(hwnd, GwlExStyle) & WsExLayered) == 0)
-                    throw new InvalidOperationException("WPF did not create a layered window.");
-                SetParent(hwnd, progman);
+                // ScreenPlay's 24H2 approach: parent into the wallpaper WorkerW (a child of Progman,
+                // the one WITHOUT SHELLDLL_DefView), not into Progman itself, and do NOT use a layered window.
+                nint wallWorker = 0;
+                for (var w = FindWindowEx(progman, 0, "WorkerW", null); w != 0; w = FindWindowEx(progman, w, "WorkerW", null))
+                    if (UsableWorker(w, progman)) { wallWorker = w; break; }
+                if (wallWorker == 0)
+                    throw new InvalidOperationException("Raised desktop: no wallpaper WorkerW child of Progman found.");
+                if (!IsWindowVisible(wallWorker)) ShowWindow(wallWorker, 5);
+                GetClientRect(wallWorker, out var wr);
+                physW = wr.Right - wr.Left; physH = wr.Bottom - wr.Top;
+                SyncWpfLogicalSize(window, physW, physH);
+                Marshal.SetLastPInvokeError(0);
+                SetParent(hwnd, wallWorker);
                 int error = Marshal.GetLastWin32Error();
-                if (GetParent(hwnd) != progman)
-                    throw new System.ComponentModel.Win32Exception(error, $"Raised desktop SetParent failed ({error}).");
-                if (!SetWindowPos(hwnd, shellDefView, 0, 0, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
+                if (GetParent(hwnd) != wallWorker)
+                    throw new System.ComponentModel.Win32Exception(error, $"Raised desktop SetParent(WorkerW) failed ({error}).");
+                // coordinates are relative to the WorkerW; no SWP_NOZORDER so we sit on top inside it
+                if (!SetWindowPos(hwnd, 0, 0, 0, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
                     throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-                ModeDescription = $"Raised desktop / layered WPF ({physW}x{physH})";
+                ModeDescription = $"Raised desktop / child of wallpaper WorkerW 0x{wallWorker:X} ({physW}x{physH})";
                 return;
             }
             nint worker = 0;
@@ -319,6 +335,12 @@ public static class DesktopWallpaperHost
 
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(nint hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindow(nint hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(nint hwnd, int cmd);
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(nint hwnd, out uint processId);
