@@ -13,7 +13,9 @@ public record MediaSnapshot(
     double Duration,
     byte[]? ThumbnailBytes,
     Lyrics? Lyrics,
-    string StatusText);
+    string StatusText,
+    string? LocalRawLrc,
+    string? LocalSource);
 
 public sealed class MediaMonitor
 {
@@ -31,6 +33,8 @@ public sealed class MediaMonitor
     private string _album = "";
     private byte[]? _thumbnail;
     private Lyrics? _lyrics;
+    private string? _localRawLrc;
+    private string? _localSource;
     private string _status = "Waiting for media…";
     private string? _sessionKey;
     private int _requestVersion;
@@ -41,7 +45,7 @@ public sealed class MediaMonitor
         _basePos + (_isPlaying ? Stopwatch.GetElapsedTime(_baseTicks).TotalSeconds : 0) + _phaseCorrection;
 
     public MediaSnapshot GetSnapshot() =>
-        new(_title, _artist, _album, _isPlaying, CurrentPosition, _duration, _thumbnail, _lyrics, _status);
+        new(_title, _artist, _album, _isPlaying, CurrentPosition, _duration, _thumbnail, _lyrics, _status, _localRawLrc, _localSource);
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -61,6 +65,8 @@ public sealed class MediaMonitor
                         _album = "";
                         _thumbnail = null;
                         _lyrics = null;
+                        _localRawLrc = null;
+                        _localSource = null;
                         _isPlaying = false;
                         _status = "Idle — play a track";
                     }
@@ -97,20 +103,33 @@ public sealed class MediaMonitor
                     _artist = artist;
                     _album = album;
                     _lyrics = null;
+                    _localRawLrc = null;
+                    _localSource = null;
                     _thumbnail = await ReadThumbnailAsync(props.Thumbnail);
-                    _status = "Searching lyrics…";
 
-                    int reqId = ++_requestVersion;
-                    _ = Task.Run(async () =>
+                    // 1. Always check local library (.lrc sidecar & embedded tags) FIRST
+                    var track = _library?.Match(title, artist, album, _duration);
+                    if (LyricsResolver.TryReadLocalLrc(track, out var localSrc, out var rawLrc))
                     {
-                        var track = _library?.Match(title, artist, album, _duration);
-                        var resolved = await LyricsResolver.ResolveAsync(track, title, artist, album, _duration, ct);
-                        if (reqId != _requestVersion) return;
-                        _lyrics = resolved;
-                        _status = resolved is null
-                            ? "No synced lyrics"
-                            : $"{resolved.Source}{(resolved.IsWordSynced ? " · word-synced" : "")}";
-                    }, ct);
+                        _localSource = localSrc;
+                        _localRawLrc = rawLrc;
+                        _lyrics = LyricsResolver.Parse(rawLrc, localSrc);
+                        _status = localSrc;
+                    }
+                    else
+                    {
+                        _status = "Searching lyrics…";
+                        int reqId = ++_requestVersion;
+                        _ = Task.Run(async () =>
+                        {
+                            var resolved = await LyricsResolver.ResolveAsync(track, title, artist, album, _duration, ct);
+                            if (reqId != _requestVersion) return;
+                            _lyrics = resolved;
+                            _status = resolved is null
+                                ? "No synced lyrics"
+                                : $"{resolved.Source}{(resolved.IsWordSynced ? " · word-synced" : "")}";
+                        }, ct);
+                    }
                 }
             }
             catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)

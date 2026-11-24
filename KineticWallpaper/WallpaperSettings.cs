@@ -30,8 +30,10 @@ public sealed class WallpaperSettings
     public bool IdleClock { get; set; } = true;
     public bool Clock24 { get; set; } = true;
     public bool LowPower { get; set; } = false;
-    public string LayoutMode { get; set; } = "multi";
+    public string TargetMonitor { get; set; } = "PRIMARY";
     public string Monitors { get; set; } = "";
+    public int TargetFps { get; set; } = 30;
+    public List<string> MusicFolders { get; set; } = [];
 
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -58,6 +60,15 @@ public sealed class WallpaperSettings
         catch { }
     }
 
+    public string ResolveTargetDeviceName()
+    {
+        if (string.Equals(TargetMonitor, "ALL", StringComparison.OrdinalIgnoreCase))
+            return "";
+        if (string.Equals(TargetMonitor, "PRIMARY", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(TargetMonitor))
+            return System.Windows.Forms.Screen.PrimaryScreen?.DeviceName ?? "";
+        return TargetMonitor;
+    }
+
     public static string BuildAutoMonitorsString()
     {
         var screens = System.Windows.Forms.Screen.AllScreens;
@@ -74,8 +85,9 @@ public sealed class WallpaperSettings
 
     public Dictionary<string, object> ToWallpaperEngineProperties()
     {
-        string monitors = string.IsNullOrWhiteSpace(Monitors) ? BuildAutoMonitorsString() : Monitors;
-        string mode = string.IsNullOrWhiteSpace(monitors) ? "single" : LayoutMode;
+        bool spanAll = string.Equals(TargetMonitor, "ALL", StringComparison.OrdinalIgnoreCase) && System.Windows.Forms.Screen.AllScreens.Length > 1;
+        string monitors = spanAll ? (string.IsNullOrWhiteSpace(Monitors) ? BuildAutoMonitorsString() : Monitors) : "";
+        string mode = spanAll ? "multi" : "single";
 
         return new Dictionary<string, object>
         {

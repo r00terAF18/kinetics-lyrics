@@ -104,6 +104,24 @@ public static class DesktopWallpaperHost
     private static DispatcherTimer? _watchdog;
     public static DesktopAttachMode CurrentMode { get; private set; } = DesktopAttachMode.AutoShell;
     public static string ModeDescription { get; private set; } = "Initializing";
+    public static string TargetMonitorDeviceName { get; set; } = "";
+
+    private static (int X, int Y, int W, int H) GetTargetScreenRect()
+    {
+        if (!string.IsNullOrWhiteSpace(TargetMonitorDeviceName))
+        {
+            var match = System.Windows.Forms.Screen.AllScreens
+                .FirstOrDefault(s => string.Equals(s.DeviceName, TargetMonitorDeviceName, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+                return (match.Bounds.X, match.Bounds.Y, match.Bounds.Width, match.Bounds.Height);
+        }
+
+        int vx = GetSystemMetrics(SmXVirtualScreen);
+        int vy = GetSystemMetrics(SmYVirtualScreen);
+        int vw = Math.Max(640, GetSystemMetrics(SmCxVirtualScreen));
+        int vh = Math.Max(480, GetSystemMetrics(SmCyVirtualScreen));
+        return (vx, vy, vw, vh);
+    }
 
     public static void Attach(Window window, DesktopAttachMode mode = DesktopAttachMode.AutoShell)
     {
@@ -280,18 +298,19 @@ public static class DesktopWallpaperHost
                 if (wallWorker == 0)
                     throw new InvalidOperationException("Raised desktop: no wallpaper WorkerW child of Progman found.");
                 if (!IsWindowVisible(wallWorker)) ShowWindow(wallWorker, 5);
-                GetClientRect(wallWorker, out var wr);
-                physW = wr.Right - wr.Left; physH = wr.Bottom - wr.Top;
-                SyncWpfLogicalSize(window, physW, physH);
+                GetWindowRect(wallWorker, out var wr);
+                var (screenX, screenY, screenWidth, screenHeight) = GetTargetScreenRect();
+                int workerRelX = screenX - wr.Left;
+                int workerRelY = screenY - wr.Top;
+                SyncWpfLogicalSize(window, screenWidth, screenHeight);
                 Marshal.SetLastPInvokeError(0);
                 SetParent(hwnd, wallWorker);
                 int error = Marshal.GetLastWin32Error();
                 if (GetParent(hwnd) != wallWorker)
                     throw new System.ComponentModel.Win32Exception(error, $"Raised desktop SetParent(WorkerW) failed ({error}).");
-                // coordinates are relative to the WorkerW; no SWP_NOZORDER so we sit on top inside it
-                if (!SetWindowPos(hwnd, 0, 0, 0, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
+                if (!SetWindowPos(hwnd, 0, workerRelX, workerRelY, screenWidth, screenHeight, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
                     throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-                ModeDescription = $"Raised desktop / child of wallpaper WorkerW 0x{wallWorker:X} ({physW}x{physH})";
+                ModeDescription = $"Raised desktop / WorkerW 0x{wallWorker:X} ({screenWidth}x{screenHeight} @ {workerRelX},{workerRelY})";
                 return;
             }
             nint worker = 0;
@@ -311,19 +330,20 @@ public static class DesktopWallpaperHost
                     return worker == 0;
                 }, 0);
 
-            if (worker == 0 || !GetClientRect(worker, out var bounds))
+            if (worker == 0 || !GetWindowRect(worker, out var bounds))
                 throw new InvalidOperationException("No visible desktop-sized background WorkerW found.");
 
-            physW = bounds.Right - bounds.Left;
-            physH = bounds.Bottom - bounds.Top;
+            var (tx, ty, tw, th) = GetTargetScreenRect();
+            int relX = tx - bounds.Left;
+            int relY = ty - bounds.Top;
             SetParent(hwnd, worker);
             int parentError = Marshal.GetLastWin32Error();
             if (GetParent(hwnd) != worker)
                 throw new System.ComponentModel.Win32Exception(parentError, $"SetParent failed ({parentError}).");
-            SyncWpfLogicalSize(window, physW, physH);
-            if (!SetWindowPos(hwnd, 0, 0, 0, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
+            SyncWpfLogicalSize(window, tw, th);
+            if (!SetWindowPos(hwnd, 0, relX, relY, tw, th, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
                 throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-            ModeDescription = $"Desktop WorkerW 0x{worker:X} ({physW}x{physH})";
+            ModeDescription = $"Desktop WorkerW 0x{worker:X} ({tw}x{th} @ {relX},{relY})";
         }
         catch (Exception ex)
         {
@@ -356,12 +376,9 @@ public static class DesktopWallpaperHost
 
     private static void PinToBottom(Window window, nint hwnd)
     {
-        int physX = GetSystemMetrics(SmXVirtualScreen);
-        int physY = GetSystemMetrics(SmYVirtualScreen);
-        int physW = Math.Max(640, GetSystemMetrics(SmCxVirtualScreen));
-        int physH = Math.Max(480, GetSystemMetrics(SmCyVirtualScreen));
+        var (tx, ty, tw, th) = GetTargetScreenRect();
 
-        SyncWpfLogicalSize(window, physW, physH);
+        SyncWpfLogicalSize(window, tw, th);
 
         SetParent(hwnd, 0);
         var style = GetWindowLongPtr(hwnd, GwlStyle);
@@ -370,8 +387,8 @@ public static class DesktopWallpaperHost
         var exStyle = GetWindowLongPtr(hwnd, GwlExStyle);
         SetWindowLongPtr(hwnd, GwlExStyle, (exStyle & ~WsExAppWindow) | WsExNoActivate | WsExToolWindow);
 
-        SetWindowPos(hwnd, HwndBottom, physX, physY, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged);
-        ModeDescription = $"Bottom-Most Desktop Layer ({physW}x{physH})";
+        SetWindowPos(hwnd, HwndBottom, tx, ty, tw, th, SwpNoActivate | SwpShowWindow | SwpFrameChanged);
+        ModeDescription = $"Bottom-Most Desktop Layer ({tw}x{th})";
     }
 
     private static void SyncWpfLogicalSize(Window window, int physW, int physH)

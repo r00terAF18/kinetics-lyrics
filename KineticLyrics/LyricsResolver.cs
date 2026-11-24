@@ -77,6 +77,45 @@ public static partial class LyricsResolver
         return new Lyrics(source, anyWordSynced, prepared);
     }
 
+    public static bool TryReadLocalLrc(Track? track, out string source, out string rawLrc)
+    {
+        source = "";
+        rawLrc = "";
+        if (track is null || !File.Exists(track.Path)) return false;
+
+        // 1. Check .lrc sidecar file next to audio file first (supports enhanced word-synced <mm:ss.xx> tags)
+        var sidecar = Path.ChangeExtension(track.Path, ".lrc");
+        try
+        {
+            if (File.Exists(sidecar))
+            {
+                var text = File.ReadAllText(sidecar);
+                if (LineTimestampRegex().IsMatch(text))
+                {
+                    source = "Local .lrc";
+                    rawLrc = text;
+                    return true;
+                }
+            }
+        }
+        catch { }
+
+        // 2. Check embedded lyrics tag in audio file (.flac, .mp3, .m4a, .ogg, .opus)
+        try
+        {
+            using var audio = TagLib.File.Create(track.Path);
+            if (!string.IsNullOrWhiteSpace(audio.Tag.Lyrics) && LineTimestampRegex().IsMatch(audio.Tag.Lyrics))
+            {
+                source = "Embedded Tags";
+                rawLrc = audio.Tag.Lyrics;
+                return true;
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
     public static async Task<Lyrics?> ResolveAsync(Track? track, string title, string artist, string album, double duration, CancellationToken ct)
     {
         if (track is not null)
