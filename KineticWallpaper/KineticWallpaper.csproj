@@ -16,8 +16,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <ProjectReference Include="..\KineticLyrics\KineticLyrics.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="WebContent\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

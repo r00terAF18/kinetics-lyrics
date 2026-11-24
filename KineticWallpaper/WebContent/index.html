@@ -1,0 +1,2152 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Kinetic Lyrics</title>
+<style>
+:root{--accent:#ff4d6d;--text:#f4f1ea;--beat:0;--dim:.55}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#08080b;color:var(--text)}
+html.inv,html.inv body{background:#f7f7f4}
+/* invert everything except the album covers, so covers keep their real colours on transparent displays */
+html.inv #bg,html.inv #anim,html.inv #shade,html.inv #flash,html.inv #tickbox,html.inv #stage,html.inv #info>div,html.inv #sync,html.inv #status,
+html.inv #rRib,html.inv #etxt,html.inv #clk,html.inv #dbg{filter:invert(1) hue-rotate(180deg)}
+html.inv #light{filter:invert(1) hue-rotate(180deg);mix-blend-mode:multiply}
+
+
+#bg{position:absolute;inset:0;background-size:100% 100%;background-position:center;opacity:0;transition:opacity 1.5s}
+#bg.show{opacity:.6}
+#flash{display:none}
+#light{position:absolute;left:0;top:0;width:var(--lsz,1600px);height:var(--lsz,1600px);margin:calc(var(--lsz,1600px)/-2) 0 0 calc(var(--lsz,1600px)/-2);
+  pointer-events:none;opacity:0;mix-blend-mode:screen;will-change:transform,opacity;display:block;
+  transition:transform 1.1s cubic-bezier(.3,.8,.3,1)}
+.ws.glint{text-shadow:0 0 calc(var(--glow,.12em)*2.2) color-mix(in srgb,var(--accent) 60%,white)!important;transition:text-shadow .05s}
+#shade{position:absolute;inset:0;background:rgba(0,0,0,var(--dim))}
+#fg{position:absolute;inset:0}
+.reg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;--rw:100vw;--rh:100vh}
+#clk{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);display:none;font:600 28px Consolas,monospace;color:#ffd400;background:rgba(0,0,0,.75);padding:16px 22px;white-space:pre;z-index:9}
+html.s1 #bg{display:none!important}
+html.s2 #ticker{display:none}html.s2 .outline,html.s2 .ghost{color:var(--text)!important;-webkit-text-stroke:0!important}html.s2 .ws.hot{text-shadow:none}
+html.s3 .u,html.s3 .exit{transition:none!important}html.s3 .cam{animation:none}html.s3 .ws{transition:none}
+/* transition themes: timing per theme, extra effects via individual 'translate'/'clip-path' so they don't fight the layout transform */
+.t-slam{transition:transform .85s cubic-bezier(.16,1,.3,1),opacity .3s .1s}
+.t-drop{transition:transform .9s cubic-bezier(.34,1.45,.6,1),opacity .25s .1s}
+.t-zoom{transition:transform .7s cubic-bezier(.2,.9,.25,1),opacity .4s .05s}
+.t-spin{transition:transform 1s cubic-bezier(.2,1.2,.3,1),opacity .35s .1s}
+.t-fade{transition:transform 1.4s cubic-bezier(.2,.7,.2,1),opacity .9s}
+.t-wipe{transition:clip-path .55s cubic-bezier(.7,0,.2,1) .05s,opacity .01s .05s;clip-path:inset(0 100% 0 0)}
+.t-wipe.on{clip-path:inset(-40% -12% -40% -12%)}
+.t-rise{transition:clip-path .6s cubic-bezier(.7,0,.2,1) .05s,transform .7s cubic-bezier(.16,1,.3,1),opacity .01s .05s;clip-path:inset(100% 0 0 0)}
+.t-rise.on{clip-path:inset(-40% -12% -40% -12%)}
+.t-glitch{transition:opacity .01s}
+.t-glitch.on{animation:glitch .45s steps(1) both}
+@keyframes glitch{0%{translate:-40px 6px;opacity:.9}12%{translate:28px -10px}24%{translate:-14px 3px;opacity:.4}36%{translate:22px 0;opacity:1}48%{translate:-6px -4px}60%{translate:10px 2px;opacity:.6}72%{translate:-3px 0;opacity:1}100%{translate:0 0}}
+.t-pop{transition:transform .55s cubic-bezier(.3,1.8,.5,1),opacity .15s .05s}
+.t-gravity{transition:transform .95s cubic-bezier(.3,1.35,.55,1) .18s,opacity .01s .18s}
+.t-carry{transition:transform .75s cubic-bezier(.65,0,.25,1),opacity .01s}
+.t-collide{transition:opacity .01s}
+.carried .ws{opacity:.4}.carried .ws.on{opacity:1}
+.t-flip,.t-swing{transition:transform .8s cubic-bezier(.2,1.25,.35,1),opacity .2s .05s;transform-origin:50% 50%;backface-visibility:hidden}
+.t-stretch{transition:transform .6s cubic-bezier(.15,1.3,.3,1),opacity .15s}
+.t-squash{transition:transform .5s cubic-bezier(.3,1.9,.5,1),opacity .1s}
+.t-rubber{transition:transform .9s cubic-bezier(.2,2.2,.4,.8),opacity .1s}
+.t-skew{transition:transform .75s cubic-bezier(.16,1.15,.3,1),opacity .2s .05s}
+.t-fly{transition:transform 1s cubic-bezier(.12,.9,.25,1),opacity .3s .1s}
+.t-orbit{transition:transform 1.1s cubic-bezier(.25,.9,.3,1),opacity .35s .1s}
+.t-split{transition:clip-path .6s cubic-bezier(.7,0,.2,1) .05s,opacity .01s .05s;clip-path:inset(0 50% 0 50%)}
+.t-split.on{clip-path:inset(-40% -12% -40% -12%)}
+.t-iris{transition:clip-path .7s cubic-bezier(.6,0,.2,1) .05s,transform .9s cubic-bezier(.2,.8,.3,1),opacity .01s .05s;clip-path:circle(0% at 50% 50%)}
+.t-iris.on{clip-path:circle(110% at 50% 50%)}
+.t-cascade,.t-wave{transition:opacity .01s}
+.l{display:inline-block}
+.t-cascade .l{opacity:0;translate:0 -.7em;rotate:-12deg;transition:translate .45s cubic-bezier(.2,1.5,.4,1),rotate .45s,opacity .15s;transition-delay:calc(var(--i)*28ms)}
+.t-cascade .ws.on .l{opacity:1;translate:0 0;rotate:0deg}
+.t-wave .l{opacity:0;translate:0 .55em;scale:.6;transition:translate .5s cubic-bezier(.3,1.6,.5,1),scale .5s cubic-bezier(.3,1.6,.5,1),opacity .2s;transition-delay:calc(var(--i)*35ms)}
+.t-wave .ws.on .l{opacity:1;translate:0 0;scale:1}
+.ex-glitch{animation:glitchOut .3s steps(1) forwards}
+@keyframes glitchOut{0%{translate:0 0}25%{translate:30px -8px;opacity:.7}50%{translate:-24px 6px;opacity:.9}75%{translate:12px 0;opacity:.3}100%{translate:0 0;opacity:0}}
+/* words are inline-blocks so each can move on its own (spaces live outside the spans) */
+.ws{display:inline-block}
+.adlib{font-family:Consolas,"Cascadia Mono",monospace;text-transform:lowercase;letter-spacing:.2em;opacity:.55}
+html.lowpower .cam{animation:none}html.lowpower #light{display:none}
+#bg.solid{background:#050507!important;opacity:1!important}
+/* animated backgrounds: only pre-drawn layers move on the GPU (no full-screen repaints) */
+#anim{position:absolute;inset:0;overflow:hidden;display:none;pointer-events:none}
+html.animbg #anim{display:block}
+#anim canvas{position:absolute;width:75vmax;height:75vmax;left:calc(50% - 37.5vmax);top:calc(50% - 37.5vmax);will-change:transform;opacity:.85}
+#bg.drift{will-change:transform;animation:bgdrift 46s ease-in-out infinite alternate}
+@keyframes bgdrift{0%{transform:scale(1.14) translate(-2.5%,-1.5%) rotate(-.6deg)}50%{transform:scale(1.24) translate(2%,1.5%) rotate(.5deg)}100%{transform:scale(1.16) translate(1%,-2%) rotate(-.3deg)}}
+html.idle #bg.drift,html.idle #anim canvas{animation-play-state:paused}
+#bg.custom{background:var(--bgc,#101018)!important;opacity:1!important}
+#dbg{position:absolute;inset:0;pointer-events:none;display:none}
+#dbg div{position:absolute;outline:3px dashed #00e5ff;outline-offset:-3px;color:#00e5ff;font:600 22px Consolas,monospace;padding:14px}
+#grain{position:absolute;inset:0;transform:translateZ(0);opacity:.07;pointer-events:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+
+#ribbon{position:absolute;inset:0;overflow:hidden;-webkit-mask-image:linear-gradient(transparent,#000 16%,#000 84%,transparent)}
+#rib{position:absolute;left:0;right:0;top:0;transition:transform 1s cubic-bezier(.16,1,.3,1)}
+.rl{position:absolute;left:4%;right:4%;text-align:center;white-space:nowrap;line-height:.92;transform-origin:center;
+    transition:opacity .7s,transform .8s cubic-bezier(.16,1,.3,1),color .6s,-webkit-text-stroke-color .6s}
+.rl.fut{opacity:.2;transform:scale(.94)}
+.rl.past{opacity:.3;color:transparent;-webkit-text-stroke:max(1px,.015em) var(--text);transform:scale(.94)}
+.rl.cur{opacity:1;transform:scale(1.05) skewX(-5deg)}
+#ribbon .ws{opacity:1}
+#ribbon .rl.cur .ws:not(.on){opacity:.25}
+#ribbon .rl.cur .ws.hot{color:var(--accent)}
+#echo{position:absolute;inset:0;display:flex;align-items:center;gap:calc(var(--rw)*.04);padding:0 calc(var(--rw)*.07)}
+#eart{height:calc(var(--rh)*.64);aspect-ratio:1;object-fit:cover;border-radius:10px;flex:none;background:#1a1a1f;
+      box-shadow:0 30px 90px rgba(0,0,0,.65);transform:rotate(-3deg)}
+#etxt{min-width:0;flex:1}
+.elab{font-size:calc(var(--rh)*.017);opacity:.5;margin-bottom:calc(var(--rh)*.014)}
+#etitle{line-height:.88;white-space:nowrap}
+#eartist{font-size:calc(var(--rh)*.065);opacity:.8;margin:calc(var(--rh)*.012) 0 calc(var(--rh)*.06);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#enext{font-size:calc(var(--rh)*.055);color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .35s,transform .5s cubic-bezier(.16,1,.3,1)}
+#enext.swap{opacity:0;transform:translateX(calc(var(--rw)*.03))}
+#ticker{transition:opacity .6s;position:absolute;left:0;bottom:calc(var(--rh)*.04);white-space:nowrap;font:900 calc(var(--rh)*.24)/1 "Bahnschrift","Segoe UI Black",sans-serif;text-transform:uppercase;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.06);animation:tick 90s linear infinite}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+#stage{position:absolute;inset:0}
+#hud{pointer-events:none}#hud #sync{pointer-events:auto}
+.box{position:absolute;overflow:visible;will-change:transform}
+#dbg .scene{outline-color:#ffd400;color:#ffd400;text-align:right}
+.exit,.cam{position:absolute;inset:0;transform-origin:center}
+.exit{transition:transform .6s cubic-bezier(.6,0,.4,1),opacity .55s ease .05s}
+.cam{animation:drift 40s ease-in-out infinite alternate}
+@keyframes drift{from{transform:rotate(-.6deg) scale(1)}to{transform:rotate(.6deg) scale(1.012)}}
+.grp{position:absolute;inset:0;pointer-events:none}
+.u{position:absolute;left:0;top:0;white-space:nowrap;line-height:.9;
+   will-change:auto}
+.ws{opacity:0;transition:opacity .25s}
+.ws.on{opacity:1}
+.ws.hot{text-shadow:0 0 var(--glow,.12em) color-mix(in srgb,var(--accent) 70%,transparent)}
+
+.f-cond{font-family:"Bahnschrift","Microsoft YaHei UI","Yu Gothic UI","Malgun Gothic",sans-serif;font-weight:700;font-stretch:condensed;font-variation-settings:"wdth" 75,"wght" 700;text-transform:uppercase;letter-spacing:-.01em}
+.f-black{font-family:"Segoe UI Black","Segoe UI","Microsoft YaHei","Yu Gothic","Malgun Gothic",sans-serif;font-weight:900;letter-spacing:-.04em}
+.f-impact{font-family:Impact,Haettenschweiler,"Microsoft YaHei","Yu Gothic","Malgun Gothic",sans-serif;text-transform:uppercase}
+.f-serif{font-family:Georgia,"Times New Roman","SimSun","Yu Mincho","Batang",serif;font-style:italic;font-weight:400;letter-spacing:-.02em}
+.f-mono{font-family:Consolas,"Cascadia Mono","MS Gothic","SimHei",monospace;text-transform:uppercase;letter-spacing:.35em;font-weight:400}
+
+.acc{color:var(--accent)}
+.outline{color:transparent;-webkit-text-stroke:max(1.5px,.018em) var(--text)}
+.outline.acc{-webkit-text-stroke-color:var(--accent)}
+.ghost{color:transparent;-webkit-text-stroke:max(1px,.012em) var(--text)}
+
+#info{position:absolute;left:calc(var(--rw)*.032);bottom:calc(var(--rh)*(.036 + var(--hudlift,0)));display:flex;align-items:center;gap:14px;font-family:"Segoe UI Variable Text","Segoe UI",sans-serif;opacity:.85}
+#art{width:54px;height:54px;border-radius:6px;object-fit:cover;background:#222;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+#t{font-weight:700;font-size:15px;max-width:calc(var(--rw)*.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#a{font-size:13px;opacity:.65;margin-top:2px}
+#bar{width:180px;height:2px;background:rgba(255,255,255,.15);margin-top:8px;border-radius:2px;overflow:hidden}
+#bar i{display:block;height:100%;width:100%;transform-origin:0 50%;transform:scaleX(0);background:var(--accent);will-change:transform}
+#sync{position:absolute;right:calc(var(--rw)*.032);bottom:calc(var(--rh)*(.036 + var(--hudlift,0)) + 22px);display:flex;gap:6px;align-items:center;font:12px Consolas,monospace;opacity:.18;transition:opacity .3s}
+#sync:hover{opacity:1}
+#sync button{background:rgba(255,255,255,.08);color:var(--text);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:4px 8px;font:inherit;cursor:pointer}
+#sync button:hover{border-color:var(--accent);color:var(--accent)}
+#nv{min-width:52px;text-align:center}
+#status{position:absolute;right:calc(var(--rw)*.032);bottom:calc(var(--rh)*(.036 + var(--hudlift,0)));font:12px Consolas,monospace;letter-spacing:.2em;text-transform:uppercase;opacity:.45}
+</style>
+</head>
+<body>
+<div id="bg"></div><div id="anim"></div><div id="shade"></div><div id="flash"></div><canvas id="light" width="256" height="256"></canvas>
+<div id="fg">
+<div id="rMain" class="reg">
+  <div id="tickbox" class="reg"><div id="ticker"></div></div>
+  <div id="stage"></div>
+  <div id="hud" class="reg">
+  <div id="info"><img id="art" alt=""><div><div id="t"></div><div id="a"></div><div id="bar"><i></i></div></div></div>
+  <div id="sync"><button data-d="0.1" title="show lyrics earlier">« earlier</button><span id="nv">0.00s</span><button data-d="-0.1" title="show lyrics later">later »</button><button data-d="0" title="reset">↺</button><button data-r="1" title="reload lyrics, audio and clock">⟳</button></div>
+  <div id="status"></div></div>
+</div>
+<div id="rRib" class="reg"><div id="ribbon"><div id="rib"></div></div></div>
+<div id="rEcho" class="reg"><div id="echo"><img id="eart" alt=""><div id="etxt">
+  <div class="elab f-mono">now playing</div><div id="etitle" class="f-cond"></div><div id="eartist" class="f-serif"></div>
+  <div class="elab f-mono">next</div><div id="enext" class="f-black"></div></div></div></div>
+</div>
+
+<div id="dbg"></div><div id="clk"></div>
+
+<script>
+const STRIP=window.__STRIP??0;
+if(STRIP>=1)document.documentElement.classList.add('s1');if(STRIP>=2)document.documentElement.classList.add('s2');if(STRIP>=3)document.documentElement.classList.add('s3');
+const $=id=>document.getElementById(id), root=document.documentElement, stage=$('stage');
+const fg=$('fg'),R={main:$('rMain'),ribbon:$('rRib'),echo:$('rEcho')};
+let W=1920,H=1080,RW=1440,RH=2560,EW=1920,EH=1080;          // main / portrait feed / side panel sizes
+const VIS={main:true,ribbon:false,echo:false};
+const S={title:'',artist:'',album:'',playing:false,basePos:0,baseT:performance.now(),dur:0,offset:0,
+         lines:[],idx:-99,slew:0,lastTL:null,lastTLT:0,reqId:0,beat:0,beatS:0,autoAccent:true,manualAccent:'#ff4d6d',lastComp:'',cur:null,cache:new Map()};
+S.lagLo=0;S.lagHi=.25;
+S.snapBias=.5;try{const b=parseFloat(localStorage.getItem('kl:snapBias'));if(isFinite(b))S.snapBias=b}catch(e){}
+const SY={key:'',on:[],prev:0,avg:.02,last:-1,auto:0,nudge:0,lastCalc:0,enabled:false,flashT:0};
+// only re-layout on a real, settled size change (WE can fire resize spam / 0x0 at startup)
+let rzT=0;
+addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(layout,350)});
+
+let RNG=null;const RR=()=>RNG?RNG():Math.random();
+const FONT_W={calm:{'f-serif':3,'f-mono':2,'f-cond':2,'f-black':.6,'f-impact':.3},intense:{'f-impact':3,'f-black':2.5,'f-cond':2,'f-serif':.4,'f-mono':.5}};
+const rnd=(a,b)=>a+RR()*(b-a), pick=a=>{
+  // mood-weighted choice when picking fonts
+  const fb=S.fontBias;if(fb&&a.length>1&&typeof a[0]==='string'&&a[0].startsWith('f-')){
+    const w=a.map(f=>FONT_W[fb][f]??1),t=w.reduce((x,y)=>x+y,0);let r=RR()*t;for(let i=0;i<a.length;i++){r-=w[i];if(r<=0)return a[i]}return a[a.length-1]}
+  return a[Math.floor(RR()*a.length)]};
+const hashStr=t=>{let h=2166136261;for(const c of t)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
+const seeded=seed=>()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(RR()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const T=(x,y,r=0,s=1)=>`translate(${x}px,${y}px) translate(-50%,-50%) rotate(${r}deg) scale(${s})`;
+const status=m=>$('status').textContent=m;
+const baseClock=()=>S.basePos+(S.playing?(performance.now()-S.baseT)/1000:0);
+const rawPos=()=>baseClock()+(S.kCur||0);
+const pos=()=>rawPos()+S.offset/1000+SY.nudge+(SY.enabled?SY.auto:0);
+
+/* ---------- measuring ---------- */
+const meas=document.createElement('span');
+meas.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font-size:100px;line-height:.9;left:-99999px;top:0';
+document.body.appendChild(meas);
+function measure(text,font){meas.className=font;meas.textContent=text;return{w:Math.max(1,meas.offsetWidth),h:Math.max(1,meas.offsetHeight)}}
+function chunk(ids,words,max){const rows=[];let cur=[],len=0;for(const i of ids){const l=words[i].length;if(cur.length&&len+l>max){rows.push(cur);cur=[];len=0}cur.push(i);len+=l+1}if(cur.length)rows.push(cur);return rows}
+
+/* ---------- compositions ---------- */
+// Stream path: the lyrics run as one continuous path through space — a sideways run, then it turns and drops down,
+// cuts a diagonal, runs vertically, or wraps round a spinning flywheel — and the camera rides along it word by word
+const PHASES=['right','down','diag','vert','wheel','wave','crescendo','rise','slam','arc'];
+const PH_VERT=['down','vert','slam'];
+function compStream(words){
+  S.lastComp='stream';
+  let P=ST.path;
+  if(!P||!ST.live.length){const h=hashStr((S.title||'')+'|path'+S.idx)>>>0;P=ST.path={x:0,y:0,phase:['right','diag','right','down'][h%4],n:0,len:2+h%2,font:['f-cond','f-impact','f-black'][(h>>>3)%3],lastWheel:-99,k:0}}
+  else if(P.n>=P.len){const h=hashStr(words.join(' ')+'|ph'+S.idx)>>>0;
+    let opts=PHASES.filter(p=>p!==P.phase&&!(p==='wheel'&&(S.idx-P.lastWheel<10||P.phase==='vert'))&&!(p==='slam'&&(S.idx-(P.lastSlam??-99)<6||words.length>4))&&!((p==='down'||p==='vert')&&words.length>8)&&!(p==='arc'&&S.idx-(P.lastArc??-99)<5));
+    // read the moment: builds climb, big moments slam, calm stretches drift
+    const L=S.lines[S.idx],nx=S.lines[S.idx+1],sec=L&&L.sec&&L.sec.type,nsec=nx&&nx.sec&&nx.sec.type;
+    const build=sec==='pre'||(nsec==='chorus'&&sec!=='chorus'),big=sec==='chorus'||S.fontBias==='intense',calm=sec==='verse'&&S.fontBias==='calm';
+    const pref=build?['crescendo','rise']:big?['slam','diag','wave','crescendo']:calm?['wave','arc','down','right']:null;
+    const pp=pref&&opts.filter(p=>pref.includes(p));
+    let np=pp&&pp.length&&(h>>>8)%10<7?pp[(h>>>12)%pp.length]:opts[h%opts.length];if(S.forcePh&&S.forcePh.length)np=S.forcePh.shift();if(np==='slam'&&words.length>4)np='crescendo';
+    // turn the corner from where the last line ended
+    const b=H*.15,wasV=PH_VERT.includes(P.phase),isV=PH_VERT.includes(np);
+    if(isV){P.y+=b*1.25;if(!wasV)P.x-=H*.3}
+    else{P.y+=b*.9;if(P.phase==='wheel'||P.phase==='arc')P.y-=b*.9;if(wasV)P.x=Math.max(P.x,P.ex||P.x)+b*.4;if(np==='rise')P.y+=b*1.2}
+    P.phase=np;P.n=0;P.len=np==='wheel'||np==='arc'?1:np==='slam'?1+(h>>>4)%2:1+(h>>>4)%3;
+    if(np==='wheel')P.lastWheel=S.idx;if(np==='slam')P.lastSlam=S.idx;if(np==='arc')P.lastArc=S.idx}
+  P.n++;P.k++;if((P.phase==='wheel'||P.phase==='arc')&&P.n===1)P.x=Math.max(P.x,P.ex||P.x)+H*.15;
+  const font=P.font||'f-black',base=H*.15,us=[],mm=words.map(w=>measure(w,font));
+  let longest=0;words.forEach((w,i)=>{if(w.length>words[longest].length)longest=i});
+  const unit=(i,fs,x,y,r,mods,fx,fy)=>({ids:[i],font,fs,x,y,r,mods,from:{x:x+fx,y:y+fy,r,s:1}});
+  const ph=P.phase;let wheel=null;
+  if(ph==='right'){let x=P.x;words.forEach((w,i)=>{const fs=base*(i===longest?1.45:1),ww=mm[i].w*fs/100;us.push(unit(i,fs,x+ww/2,P.y,0,i===longest?'acc':'',W*.08,0));x+=ww*(i===longest?1.12:1)+base*.32});P.x=x+base*.25}
+  else if(ph==='down'){let y=P.y;words.forEach((w,i)=>{const fs=Math.min(H*.2,W*.3/mm[i].w*100),ww=mm[i].w*fs/100,hh=mm[i].h*fs/100;us.push(unit(i,fs,P.x+ww/2,y+hh*.42,0,i===longest?'acc':(i%3===2?'outline':''),0,H*.08));y+=hh*.84});P.y=y+base*.1}
+  else if(ph==='diag'){let x=P.x,y=P.y;words.forEach((w,i)=>{const fs=base*(i===longest?1.3:1),ww=mm[i].w*fs/100,hh=mm[i].h*fs/100;us.push(unit(i,fs,x+ww/2,y,0,i===longest?'acc':'',W*.05,H*.05));x+=ww*(i===longest?.75:.66)+base*.18;y+=hh*.74});P.x=x;P.y=y}
+  else if(ph==='vert'){let y=P.y;words.forEach((w,i)=>{const fs=base*(i===longest?1.35:1.05),ww=mm[i].w*fs/100;us.push(unit(i,fs,P.x,y+ww/2,90,i===longest?'acc':'',0,H*.1));y+=ww+base*.3});P.y=y+base*.2}
+  else if(ph==='wave'){ // words ride a sine wave, tilting with the slope
+    let x=P.x,a=P.wv||0;const amp=H*.11;words.forEach((w,i)=>{const fs=base*(i===longest?1.3:.95),ww=mm[i].w*fs/100,mid=a+ww/(base*2.2);
+      const y=P.y+Math.sin(mid)*amp,sl=Math.atan(Math.cos(mid)*amp/(base*2.2))*180/Math.PI*.7;us.push(unit(i,fs,x+ww/2,y,sl,i===longest?'acc':'',0,H*.08));
+      x+=ww*1.06+base*.42;a+=(ww*1.06+base*.42)/(base*2.2)});P.x=x+base*.2;P.wv=a}
+  else if(ph==='crescendo'){ // each word bigger than the last, bottoms lined up, the last one lands huge
+    let x=P.x;const n=words.length;words.forEach((w,i)=>{const fs=base*(.55+1.35*(n>1?i/(n-1):1)),ww=mm[i].w*fs/100,hh=mm[i].h*fs/100;
+      us.push(unit(i,fs,x+ww/2,P.y+base*.45-hh*.45,0,i===n-1?'acc':'',W*.04,0));x+=ww+fs*.22});P.x=x+base*.3}
+  else if(ph==='rise'){ // staircase climbing up to the right
+    let x=P.x,y=P.y;words.forEach((w,i)=>{const fs=base*(i===longest?1.3:1),ww=mm[i].w*fs/100,hh=mm[i].h*fs/100;us.push(unit(i,fs,x+ww/2,y,0,i===longest?'acc':'',0,H*.06));
+      x+=ww*(i===longest?.75:.66)+base*.18;y-=hh*.74});P.x=x;P.y=y}
+  else if(ph==='slam'){ // one giant word per beat, stacked, the camera cuts hard to each
+    let y=P.y;words.forEach((w,i)=>{const fs=Math.min(H*.34,W*.6/mm[i].w*100),ww=mm[i].w*fs/100,hh=mm[i].h*fs/100;
+      us.push(unit(i,fs,P.x+ww/2,y+hh*.42,0,i%2?'outline':'acc',0,-H*.05));y+=hh*.86});P.y=y+base*.1}
+  else if(ph==='arc'){ // a rainbow: up and over the top, words follow the curve
+    let fs=base*.95,arc=words.reduce((a,w,i)=>a+mm[i].w*fs/100*(i===longest?1.12:1)+fs*.6,0),R=Math.max(H*.3,arc/(Math.PI*.92));
+    if(R>H*.55){fs*=H*.55/R;arc*=H*.55/R;R=H*.55}
+    const cx=P.x+R,cy=P.y+R*.35;let th=Math.PI+(Math.PI-arc/R)/2;
+    words.forEach((w,i)=>{const ww=mm[i].w*fs/100*(i===longest?1.12:1),step=(ww+fs*.6)/R;th+=step/2;const t=th;th+=step/2;
+      us.push(unit(i,fs,cx+R*Math.cos(t),cy+R*Math.sin(t),t*180/Math.PI+90,i===longest?'acc':'',0,H*.05))});
+    P.x=cx+R+base*.5;P.y=cy}
+  else{ // flywheel: words round a rim, the wheel spins each word up to the top as it's sung
+    let fs=base*.95,arc=words.reduce((a,w,i)=>a+mm[i].w*fs/100+fs*.45,0),R=Math.max(H*.26,arc/(2*Math.PI*.82));
+    if(R>H*.4){fs*=H*.4/R;arc*=H*.4/R;R=H*.4}
+    const cx=P.x+R,cy=P.y;let th=-Math.PI/2;wheel={cx,cy,R};
+    words.forEach((w,i)=>{const ww=mm[i].w*fs/100,step=(ww+fs*.45)/R;th+=step/2;const t=th;th+=step/2;
+      const u=unit(i,fs,cx+R*Math.cos(t),cy+R*Math.sin(t),t*180/Math.PI+90,i===longest?'acc':'',0,0);u.theta=t*180/Math.PI;us.push(u)});
+    P.x=cx+R+base*.6;P.y=cy}
+  P.ex=Math.max(P.ex||-1e9,...us.map(u=>u.x+(u.r===90?u.fs*.5:measure(words[u.ids[0]],font).w*u.fs/200)));
+  // keep each line's own coordinates local (near its words) so its layer never stretches back to the world origin
+  let ox=1e9,oy=1e9;for(const u of us){ox=Math.min(ox,u.x);oy=Math.min(oy,u.y)}ox=Math.round(ox-W*.15);oy=Math.round(oy-H*.15);
+  for(const u of us){u.x-=ox;u.y-=oy;u.from.x-=ox;u.from.y-=oy}if(wheel){wheel.cx-=ox;wheel.cy-=oy}
+  S.pathLine={phase:ph,wheel,ox,oy};
+  return us;
+}
+function compStack(words){
+  const font=pick(['f-cond','f-impact','f-black']);
+  const rows=chunk(words.map((_,i)=>i),words,words.length>6?14:9);
+  const bw=W*rnd(.48,.64);
+  const us=rows.map(r=>{const m=measure(r.map(i=>words[i]).join(' '),font);const fs=Math.min(100*bw/m.w,H*.34);return{ids:r,font,fs,w:m.w*fs/100,h:m.h*fs/100}});
+  let tot=us.reduce((a,u)=>a+u.h,0);const k=Math.min(1,H*.78/tot);us.forEach(u=>{u.fs*=k;u.w*=k;u.h*=k});tot*=k;
+  const align=pick(['left','center','right']),left=(W-bw*k)/2,acc=Math.floor(Math.random()*us.length);
+  let y=(H-tot)/2;
+  us.forEach((u,i)=>{
+    u.y=y+u.h/2;y+=u.h;
+    u.x=align==='left'?left+u.w/2:align==='right'?left+bw*k-u.w/2:W/2;
+    u.r=0;u.mods=(i===acc?'acc ':'')+(i%2&&Math.random()<.6?'outline':'');
+    const side=i%2?1:-1;u.from={x:u.x+side*W*.7,y:u.y,r:0,s:1};
+  });
+  return us;
+}
+function compHero(words){
+  let hi=0;words.forEach((w,i)=>{if(w.length>words[hi].length)hi=i});
+  const font=pick(['f-impact','f-cond','f-black','f-serif']);
+  const m=measure(words[hi],font),fs=Math.min(100*W*.84/m.w,100*H*.5/m.h),h=m.h*fs/100,r=words.length>4?pick([0,0,-4,4]):pick([0,0,-4,4,-90]);
+  const vert=r===-90, fsv=vert?Math.min(fs,100*H*.85/m.w):fs, hx=vert?W*.5:W/2;
+  const us=[{ids:[hi],font,fs:fsv,x:hx,y:H/2,r,mods:pick(['','acc','outline','outline acc']),from:{x:hx,y:H/2,r:r+rnd(-20,20),s:2.8}}];
+  const sm='f-mono',ids=words.map((_,i)=>i),before=ids.slice(0,hi),after=ids.slice(hi+1),hw=m.w*fs/100,off=vert?0:h/2+Math.abs(Math.sin(r*Math.PI/180))*hw/2,vh=m.h*fsv/100;
+  const side=(grp,dir)=>{if(!grp.length)return;const mm=measure(grp.map(i=>words[i]).join(' '),sm);const f=Math.min(H*.045,100*W*.7/mm.w);
+    const sw=mm.w*f/100,y=vert?H/2:H/2+dir*(off+f*.9), x=vert?W/2+dir*(vh/2+sw/2+W*.02):W/2;
+    us.push({ids:grp,font:sm,fs:f,x,y,r:0,mods:'',from:{x,y:y+dir*70,r:0,s:1}})};
+  side(before,-1);side(after,1);
+  return us;
+}
+function compScatter(words){
+  const cols=3,rows=3,cw=W*.8/cols,ch=H*.76/rows,cells=shuffle([...Array(9).keys()]);
+  return words.map((w,i)=>{
+    const c=cells[i%9],cx=W*.1+(c%cols+.5)*cw+rnd(-.06,.06)*cw,cy=H*.12+(Math.floor(c/cols)+.5)*ch+rnd(-.05,.05)*ch;
+    const r=pick([0,0,0,-90,90,-7,7]),font=pick(['f-cond','f-serif','f-impact','f-black','f-mono']),m=measure(w,font),vert=Math.abs(r)===90;
+    const fs=Math.min(100*(vert?ch*.9:cw*.88)/m.w,100*(vert?cw:ch)*.7/m.h,H*.3);
+    return{ids:[i],font,fs,x:cx,y:cy,r,mods:pick(['','','outline','acc']),from:{x:cx+rnd(-120,120),y:cy+rnd(-120,120),r:r+rnd(-50,50),s:0}};
+  });
+}
+function compDiag(words){
+  const t=words.join(' '),font=pick(['f-cond','f-impact','f-black']),m=measure(t,font),r=pick([-12,-8,8,12]);
+  const fs=Math.min(100*W*.95/m.w,100*H*.26/m.h),rad=r*Math.PI/180,dx=Math.cos(rad)*W,dy=Math.sin(rad)*W;
+  const ox=-Math.sin(rad)*m.h*fs/100*1.02,oy=Math.cos(rad)*m.h*fs/100*1.02;
+  const us=[{ids:words.map((_,i)=>i),font,fs,x:W/2,y:H/2,r,mods:pick(['','acc']),from:{x:W/2-dx,y:H/2-dy,r,s:1}}];
+  for(const k of [-2,-1,1,2])us.push({deco:true,text:t,font,fs,x:W/2+k*ox,y:H/2+k*oy,r,op:.32/Math.abs(k),mods:'ghost',from:{x:W/2+k*ox+k*dx*.5,y:H/2+k*oy+k*dy*.5,r,s:1}});
+  return us;
+}
+const SMALL=new Set('a an the to of in on at by for and or but so if is am are was be i my me you your we our it its it\'s i\'m i\'ll you\'re that this with from as up oh ooh yeah no do don\'t can just like'.split(' '));
+const isSmall=w=>SMALL.has(w.toLowerCase().replace(/[^\p{L}']/gu,''));
+// one clean line
+function compCenter(words){
+  const f=pick(['f-cond','f-black']),t=words.join(' '),m=measure(t,f),fs=Math.min(100*W*.86/m.w,100*H*.32/m.h);
+  if(fs<H*.07&&words.length>3)return compStack(words);
+  return[{ids:words.map((_,i)=>i),font:f,fs,x:W/2,y:H/2,r:0,mods:'',from:{x:W/2,y:H/2,r:0,s:1}}];
+}
+// poster flow: content words big, little words small, wrapped and centred
+function compFlow(words){
+  const bigF=pick(['f-cond','f-black','f-impact']),smF=pick(['f-serif','f-mono']),maxW=W*.84;
+  const lay=base=>{const rows=[];let row=[],rw=0;
+    words.forEach((w,i)=>{const sm=isSmall(w)&&words.length>2,f=sm?smF:bigF,fs=sm?base*.42:base,m=measure(w,f),ww=m.w*fs/100,hh=m.h*fs/100,gap=base*.16;
+      if(row.length&&rw+gap+ww>maxW){rows.push({row,rw});row=[];rw=0}
+      row.push({i,f,fs,ww,hh});rw+=(row.length>1?gap:0)+ww});
+    if(row.length)rows.push({row,rw});return rows};
+  let base=H*.4,rows;
+  for(let k=0;k<30;k++){rows=lay(base);const th=rows.reduce((a,r)=>a+Math.max(...r.row.map(x=>x.hh)),0)*1.02;if(th<=H*.8&&rows.every(r=>r.rw<=maxW))break;base*=.9}
+  const tot=rows.reduce((a,r)=>a+Math.max(...r.row.map(x=>x.hh))*1.02,0),us=[];let y=(H-tot)/2,longest=-1,lw=0;
+  words.forEach((w,i)=>{if(!isSmall(w)&&w.length>lw){lw=w.length;longest=i}});
+  for(const r of rows){const rh=Math.max(...r.row.map(x=>x.hh));let x=(W-r.rw)/2;
+    for(const c of r.row){us.push({ids:[c.i],font:c.f,fs:c.fs,x:x+c.ww/2,y:y+rh-c.hh/2,r:0,mods:c.i===longest?'acc':'',from:{x:x+c.ww/2,y:y+rh-c.hh/2,r:0,s:1}});x+=c.ww+base*.16}
+    y+=rh*1.02}
+  return us;
+}
+// staircase: one word per step, stepping right and down
+function compStair(words){
+  const f=pick(['f-cond','f-black']),n=words.length,ms=words.map(w=>measure(w,f));
+  const pad=Math.min(W,H)*.03;let fs=Math.min(100*(H*.84-pad*n)/n/ms[0].h,H*.3);
+  for(let k=0;k<30;k++){const mw=Math.max(...ms.map(m=>m.w))*fs/100;if(mw<=W*.84-(n-1)*W*.03&&n*(ms[0].h*fs/100+pad)<=H*.86)break;fs*=.92}
+  const rowH=ms[0].h*fs/100+pad,step=Math.max(0,(W*.84-Math.max(...ms.map(m=>m.w))*fs/100)/Math.max(1,n-1)),top=(H-rowH*n)/2;
+  return words.map((w,i)=>{const ww=ms[i].w*fs/100,x=W*.08+i*step+ww/2,y=top+rowH*(i+.5);return{ids:[i],font:f,fs,x,y,r:0,mods:i%2?'outline':(i===n-1?'acc':''),from:{x,y,r:0,s:1}}});
+}
+// column: every word stretched to the same width
+function compColumn(words){
+  const f=pick(['f-cond','f-impact','f-black']),colW=W*rnd(.3,.42),cx=pick([W*.3,W/2,W*.7]);
+  let us=words.map((w,i)=>{const m=measure(w,f);const fs=100*colW/m.w;return{ids:[i],font:f,fs,h:m.h*fs/100}});
+  const pad=Math.min(W,H)*.025;
+  let tot=us.reduce((a,u)=>a+u.h+pad,0);const k=Math.min(1,H*.86/tot);us.forEach(u=>{u.fs*=k;u.h*=k});tot=us.reduce((a,u)=>a+u.h+pad,0);
+  let y=(H-tot)/2;
+  return us.map((u,i)=>{const yy=y+u.h/2+pad/2;y+=u.h+pad;return{ids:u.ids,font:f,fs:u.fs,x:cx,y:yy,r:0,mods:i%3===1?'outline':(u.h===Math.max(...us.map(q=>q.h))?'acc':''),from:{x:cx,y:yy,r:0,s:1}}});
+}
+// split: first half top-left, second half bottom-right in a contrasting face
+function compSplit(words){
+  const h=Math.ceil(words.length/2),A=words.slice(0,h),B=words.slice(h),fa=pick(['f-serif','f-cond']),fb=fa==='f-serif'?pick(['f-cond','f-black']):'f-serif';
+  const ma=measure(A.join(' '),fa),mb=measure(B.join(' '),fb),fsa=Math.min(100*W*.66/ma.w,H*.3),fsb=Math.min(100*W*.66/mb.w,H*.3);
+  const wa=ma.w*fsa/100,wb=mb.w*fsb/100;
+  return[{ids:A.map((_,i)=>i),font:fa,fs:fsa,x:W*.07+wa/2,y:H*.33,r:0,mods:'',from:{x:W*.07+wa/2,y:H*.33,r:0,s:1}},
+         {ids:B.map((_,i)=>i+h),font:fb,fs:fsb,x:W*.93-wb/2,y:H*.67,r:0,mods:'acc',from:{x:W*.93-wb/2,y:H*.67,r:0,s:1}}];
+}
+// grid: words in reading order on a tidy grid, alternating upright / turned
+function compGrid(words){
+  const n=words.length,cols=n<=4?2:3,rows=Math.ceil(n/cols),cw=W*.84/cols,ch=H*.8/rows,f=pick(['f-cond','f-black']);
+  return words.map((w,i)=>{const c=i%cols,r=Math.floor(i/cols),turned=(i%4===3)&&w.length>3,m=measure(w,f);
+    const fs=Math.min(100*(turned?ch:cw)*.86/m.w,100*(turned?cw:ch)*.72/m.h),x=W*.08+(c+.5)*cw,y=H*.1+(r+.5)*ch;
+    return{ids:[i],font:f,fs,x,y,r:turned?-90:0,mods:i%3===2?'outline':'',from:{x,y,r:turned?-90:0,s:1}}});
+}
+// ---- controlled chaos ----
+// words alternate horizontal / vertical, laid out left to right
+function compZigzag(words){
+  const f=pick(['f-cond','f-black','f-impact']),dir=pick([-90,90]),ms=words.map(w=>measure(w,f)),n=words.length,gap=.12;
+  const foot=(fs)=>{let w=0,h=0;ms.forEach((m,i)=>{const v=i%2===1;w+=(v?m.h:m.w)*fs/100+(i?gap*fs:0);h=Math.max(h,(v?m.w:m.h)*fs/100)});return{w,h}};
+  let fs=H*.5;for(let k=0;k<40;k++){const F=foot(fs);if(F.w<=W*.88&&F.h<=H*.84)break;fs*=.92}
+  const F=foot(fs);let x=(W-F.w)/2;
+  return words.map((w,i)=>{const v=i%2===1,m=ms[i],fw=(v?m.h:m.w)*fs/100;const cx=x+fw/2;x+=fw+gap*fs;
+    return{ids:[i],font:f,fs,x:cx,y:H/2,r:v?dir:0,mods:v?(i%4===1?'acc':'outline'):'',from:{x:cx,y:H/2,r:v?dir:0,s:1}}});
+}
+// longest word runs vertically through the middle, the rest crosses it
+function compCross(words){
+  let li=0;words.forEach((w,i)=>{if(w.length>words[li].length)li=i});
+  const sf=pick(['f-cond','f-impact']),hf=pick(['f-serif','f-black','f-mono']),dir=pick([-90,90]);
+  const sm=measure(words[li],sf),sfs=Math.min(100*H*.9/sm.w,100*W*.22/sm.h),thick=sm.h*sfs/100;
+  const sx=W*pick([.38,.5,.62]);
+  const L=words.slice(0,li),Rr=words.slice(li+1),side=(arr,room)=>{if(!arr.length)return 0;const m=measure(arr.join(' '),hf);return Math.min(100*room/m.w,100*H*.18/m.h)};
+  const roomL=sx-thick/2-W*.06,roomR=W-(sx+thick/2)-W*.06,fl=side(L,roomL),fr=side(Rr,roomR),gap=W*.02;
+  const us=[{ids:[li],font:sf,fs:sfs,x:sx,y:H/2,r:dir,mods:'acc',from:{x:sx,y:H/2,r:dir,s:1}}];
+  if(L.length){const w=measure(L.join(' '),hf).w*fl/100,x=sx-thick/2-gap-w/2;us.push({ids:L.map((_,i)=>i),font:hf,fs:fl,x,y:H/2,r:0,mods:'',from:{x,y:H/2,r:0,s:1}})}
+  if(Rr.length){const w=measure(Rr.join(' '),hf).w*fr/100,x=sx+thick/2+gap+w/2;us.push({ids:Rr.map((_,i)=>i+li+1),font:hf,fs:fr,x,y:H/2,r:0,mods:'',from:{x,y:H/2,r:0,s:1}})}
+  return us;
+}
+// one big word in the middle, the rest runs round the edges like a border
+function compFrame(words){
+  let li=0;words.forEach((w,i)=>{if(w.length>words[li].length)li=i});
+  const rest=words.map((_,i)=>i).filter(i=>i!==li),f=pick(['f-mono','f-cond']),cf=pick(['f-black','f-serif','f-impact']);
+  const mx=W*.06,my=H*.07,band=Math.min(W,H)*.1;
+  const sides=[[],[],[],[]];rest.forEach((id,k)=>sides[Math.min(3,Math.floor(k*4/rest.length))].push(id));
+  const geo=[{x:W/2,y:my+band/2,r:0,len:W-2*mx-2*band},{x:W-mx-band/2,y:H/2,r:90,len:H-2*my-2*band},{x:W/2,y:H-my-band/2,r:0,len:W-2*mx-2*band},{x:mx+band/2,y:H/2,r:-90,len:H-2*my-2*band}];
+  const us=[];sides.forEach((ids,k)=>{if(!ids.length)return;const t=ids.map(i=>words[i]).join(' '),m=measure(t,f),g=geo[k];
+    const fs=Math.min(100*g.len*.9/m.w,100*band*.8/m.h);us.push({ids,font:f,fs,x:g.x,y:g.y,r:g.r,mods:k===1?'acc':'',from:{x:g.x,y:g.y,r:g.r,s:1}})});
+  const cm=measure(words[li],cf),cfs=Math.min(100*(W-2*mx-2*band)*.8/cm.w,100*(H-2*my-2*band)*.75/cm.h);
+  us.push({ids:[li],font:cf,fs:cfs,x:W/2,y:H/2,r:0,mods:pick(['','outline']),from:{x:W/2,y:H/2,r:0,s:1}});
+  return us;
+}
+// giant vertical word on one side, the rest stacked beside it
+function compTower(words){
+  let li=0;words.forEach((w,i)=>{if(w.length>words[li].length)li=i});
+  const f=pick(['f-cond','f-impact']),left=pick([true,false]),m=measure(words[li],f),fs=Math.min(100*H*.92/m.w,100*W*.24/m.h),thick=m.h*fs/100;
+  const tx=left?W*.05+thick/2:W*.95-thick/2;
+  const us=[{ids:[li],font:f,fs,x:tx,y:H/2,r:left?-90:90,mods:'acc',from:{x:tx,y:H/2,r:left?-90:90,s:1}}];
+  const rest=words.map((_,i)=>i).filter(i=>i!==li);if(!rest.length)return us;
+  const rx0=left?tx+thick/2+W*.04:W*.06,rx1=left?W*.94:tx-thick/2-W*.04,rw=rx1-rx0;
+  const sub=rest.map(i=>words[i]),w0=W,h0=H;W=rw;H=h0*.86;let st;try{st=compStack(sub)}finally{W=w0;H=h0}
+  for(const u of st){u.ids=u.ids.map(k=>rest[k]);u.x+=rx0;u.y+=H*.07;u.from={x:u.x,y:u.y,r:u.r||0,s:1};us.push(u)}
+  return us;
+}
+// mixed angles, faces and sizes — seeded, so it's the same every time
+function compChaos(words){
+  const n=words.length,cols=n<=4?2:n<=6?3:4,rows=Math.ceil(n/cols),cw=W*.86/cols,ch=H*.82/rows,cells=shuffle([...Array(cols*rows).keys()]);
+  return words.map((w,i)=>{const c=cells[i],r=pick([0,0,0,90,-90,-7,7]),f=pick(['f-cond','f-serif','f-impact','f-black','f-mono']),m=measure(w,f),vert=Math.abs(r)===90;
+    const big=.55+Math.min(.45,w.length/14);
+    const fs=Math.min(100*(vert?ch:cw)*.92*big/m.w,100*(vert?cw:ch)*.8*big/m.h);
+    const x=W*.07+(c%cols+.5)*cw,y=H*.09+(Math.floor(c/cols)+.5)*ch;
+    return{ids:[i],font:f,fs,x,y,r,mods:pick(['','','outline','acc']),from:{x,y,r,s:1}}});
+}
+// ---- new layouts ----
+// arc: the line bends along an arch (or a smile), every word tilted to follow the curve
+function compArc(words){
+  const f=pick(['f-cond','f-black','f-impact']),down=Math.random()<.35,ms=words.map(w=>measure(w,f)),n=words.length;
+  const span=Math.min(100,46+n*9)*Math.PI/180,gap=.26;
+  let fs=H*.42,R,L,hh;
+  for(let k=0;k<50;k++){hh=ms[0].h*fs/100;L=ms.reduce((a,m)=>a+m.w*fs/100,0)+gap*fs*(n-1);R=L/span;
+    const ew=2*R*Math.sin(span/2)+hh*1.1,eh=R*(1-Math.cos(span/2))+hh*1.5;if(ew<=W*.92&&eh<=H*.8)break;fs*=.95}
+  const eh=R*(1-Math.cos(span/2))+hh,top=(H-eh)/2,us=[];
+  const cy=down?top+eh-hh/2-R:top+hh/2+R;let acc=-span/2,big=0;
+  ms.forEach((m,i)=>{if(m.w>ms[big].w)big=i});
+  ms.forEach((m,i)=>{const ww=m.w*fs/100,a=acc+(ww/2)/R;acc+=(ww+gap*fs)/R;
+    const x=W/2+R*Math.sin(a),y=down?cy+R*Math.cos(a):cy-R*Math.cos(a),r=(down?-a:a)*180/Math.PI;
+    us.push({ids:[i],font:f,fs,x,y,r,mods:i===big?'acc':(i%3===1?'outline':''),from:{x:W/2,y:down?cy:cy,r:0,s:.2}})});
+  return us;
+}
+// pyramid: a tip of one word widening into a base, each row a little bigger
+function compPyramid(words){
+  const f=pick(['f-cond','f-black','f-impact']),n=words.length,sizes=[];let left=n,k=1;
+  while(left>0){sizes.push(Math.min(k,left));left-=k;k++}
+  if(sizes.length>1&&sizes[sizes.length-1]<sizes[sizes.length-2]-1){const l=sizes.pop();sizes[sizes.length-1]+=l}
+  const inv=Math.random()<.3;if(inv)sizes.reverse();   // upside-down: wide rows first, but words stay in reading order
+  const rows=[];let i=0;for(const z of sizes){rows.push(words.slice(i,i+z).map((_,j)=>i+j));i+=z}
+  const R=rows.length,us=rows.map((r,j)=>{const t=r.map(q=>words[q]).join(' '),m=measure(t,f),frac=R>1?(inv?1-j/(R-1):j/(R-1)):1,tw=W*(.34+.58*frac);
+    const fs=Math.min(100*tw/m.w,100*H*.3/m.h);return{ids:r,font:f,fs,w:m.w*fs/100,h:m.h*fs/100}});
+  let tot=us.reduce((a,u)=>a+u.h,0)*1.04;const sc=Math.min(1,H*.84/tot);us.forEach(u=>{u.fs*=sc;u.w*=sc;u.h*=sc});tot*=sc;
+  let y=(H-tot)/2;const tip=inv?R-1:0;
+  return us.map((u,j)=>{const yy=y+u.h/2;y+=u.h*1.04;return{ids:u.ids,font:u.font,fs:u.fs,x:W/2,y:yy,r:0,mods:j===tip?'acc':(j%2?'outline':''),from:{x:W/2,y:inv?-H*.2:H*1.2,r:0,s:1}}});
+}
+// big initial: the first letter as a giant drop-cap, the line set in a block beside it
+function compInitial(words){
+  const cf=pick(['f-serif','f-black','f-impact']),ch=(words[0].match(/\p{L}|\p{N}/u)||[words[0][0]])[0],cm=measure(ch,cf);
+  const cfs=Math.min(100*H*.86/cm.h,100*W*.34/cm.w),cw=cm.w*cfs/100,left=Math.random()<.65;
+  const cx=left?W*.05+cw/2:W*.95-cw/2;
+  const us=[{deco:true,text:ch,font:cf,fs:cfs,x:cx,y:H/2,r:0,op:.9,mods:'acc',from:{x:cx,y:H/2,r:0,s:1.4}}];
+  const rx0=left?cx+cw/2+W*.04:W*.05,rx1=left?W*.95:cx-cw/2-W*.04,rw=rx1-rx0,w0=W,h0=H;
+  let st;W=rw;H=h0*.8;try{st=words.length<=3?compStair(words):compStack(words)}finally{W=w0;H=h0}
+  for(const u of st){u.x+=rx0;u.y+=H*.1;u.from={x:u.x,y:u.y,r:u.r||0,s:1};u.mods=(u.mods||'').replace('acc','').trim();us.push(u)}
+  return us;
+}
+// caps: one word per row like a magazine cover, rows alternate face, width and side
+function compCaps(words){
+  const fa=pick(['f-black','f-impact','f-cond']),fb=pick(['f-serif','f-mono']),n=words.length,pad=H*.012;
+  let us=words.map((w,i)=>{const sm=isSmall(w)&&n>2,f=sm?fb:(i%2?fb:fa),m=measure(w,f),tw=sm?W*.22:(i%2?W*.5:W*.78);
+    const fs=Math.min(100*tw/m.w,100*H*.34/m.h);return{ids:[i],font:f,fs,w:m.w*fs/100,h:m.h*fs/100,sm}});
+  let tot=us.reduce((a,u)=>a+u.h+pad,0);const k=Math.min(1,H*.78/tot);us.forEach(u=>{u.fs*=k;u.w*=k;u.h*=k});tot=us.reduce((a,u)=>a+u.h+pad,0);
+  let y=(H-tot)/2-H*.03,big=0;us.forEach((u,i)=>{if(u.fs*u.w>us[big].fs*us[big].w)big=i});
+  return us.map((u,i)=>{const yy=y+u.h/2;y+=u.h+pad;const side=u.sm?.5:(i%2?.72:.32),x=Math.min(W*.95-u.w/2,Math.max(W*.05+u.w/2,W*side));
+    return{ids:u.ids,font:u.font,fs:u.fs,x,y:yy,r:0,mods:i===big?'acc':(u.font===fb&&!u.sm?'':i%3===2?'outline':''),from:{x:i%2?W*1.3:-W*.3,y:yy,r:0,s:1}}});
+}
+// climb: words step up diagonally from one corner to the other, growing as they go
+function compClimb(words){
+  const f=pick(['f-cond','f-black','f-impact']),n=words.length,ms=words.map(w=>measure(w,f)),up=false,mir=Math.random()<.4,grow=i=>.55+.45*i/Math.max(1,n-1);
+  let fs=H*.3;for(let k=0;k<40;k++){const mw=Math.max(...ms.map((m,i)=>m.w*fs*grow(i)/100)),th=ms.reduce((a,m,i)=>a+m.h*fs*grow(i)/100,0)*1.02;if(mw<=W*.62&&th<=H*.78)break;fs*=.93}
+  const hs=ms.map((m,i)=>m.h*fs*grow(i)/100*1.02),ws=ms.map((m,i)=>m.w*fs*grow(i)/100),tot=hs.reduce((a,b)=>a+b,0);
+  let y=up?(H+tot)/2:(H-tot)/2-H*.03;
+  return words.map((w,i)=>{const t0=n>1?i/(n-1):.5,t=mir?1-t0:t0,x0=W*.06+ws[i]/2,x1=W*.94-ws[i]/2,x=x0+(x1-x0)*t,yy=up?y-hs[i]/2:y+hs[i]/2;y+=up?-hs[i]:hs[i];
+    return{ids:[i],font:f,fs:fs*grow(i),x,y:yy,r:0,mods:i===n-1?'acc':(i%2?'outline':''),from:{x:x-W*.15,y:yy+(up?H*.2:-H*.2),r:0,s:1}}});
+}
+// wave: one row of words riding a gentle wave, tilted with the slope
+function compWave(words){
+  const f=pick(['f-cond','f-black','f-impact','f-serif']),n=words.length,ms=words.map(w=>measure(w,f)),gap=.42,ph=rnd(0,Math.PI);
+  let fs=H*.3;for(let k=0;k<40;k++){const tw=ms.reduce((a,m)=>a+m.w*fs/100,0)+gap*fs*(n-1);if(tw<=W*.9&&ms[0].h*fs/100<=H*.3)break;fs*=.94}
+  const tw=ms.reduce((a,m)=>a+m.w*fs/100,0)+gap*fs*(n-1),A=Math.min(H*.2,(H*.86-ms[0].h*fs/100)/2);let x=(W-tw)/2,big=0;
+  ms.forEach((m,i)=>{if(m.w>ms[big].w)big=i});
+  return words.map((w,i)=>{const ww=ms[i].w*fs/100,cx=x+ww/2;x+=ww+gap*fs;const t=(cx/W)*Math.PI*1.6+ph,y=H/2+A*Math.sin(t),r=Math.cos(t)*5;
+    return{ids:[i],font:f,fs,x:cx,y,r,mods:i===big?'acc':(i%3===2?'outline':''),from:{x:cx,y:y+(i%2?H*.3:-H*.3),r:0,s:1}}});
+}
+// sandwich: first and last word huge top and bottom, the rest small in between
+function compSandwich(words){
+  const n=words.length,bf=pick(['f-black','f-impact','f-cond']),sf=pick(['f-mono','f-serif']);
+  const big=(i,yf,fromY)=>{const m=measure(words[i],bf),fs=Math.min(100*W*.84/m.w,100*H*.34/m.h);return{ids:[i],font:bf,fs,x:W/2,y:H*yf,r:0,h:m.h*fs/100,mods:'',from:{x:W/2,y:fromY,r:0,s:1}}};
+  const top=big(0,.25,-H*.3),bot=big(n-1,.75,H*1.3);bot.mods='acc';
+  const mid=words.map((_,i)=>i).slice(1,-1),room=H*.5-(top.h+bot.h)/2,us=[top,bot];
+  if(mid.length){const rows=chunk(mid,words,18),rh=Math.max(H*.03,room*.8/rows.length);
+    rows.forEach((r,j)=>{const m=measure(r.map(i=>words[i]).join(' '),sf),fs=Math.min(100*W*.7/m.w,100*rh*.9/m.h),y=H/2+(j-(rows.length-1)/2)*rh;
+      us.push({ids:r,font:sf,fs,x:W/2,y,r:0,mods:'',from:{x:W/2,y,r:0,s:0}})})}
+  // keep the big words clear of the middle if it got crowded
+  const midH=us.slice(2).reduce((a,u)=>a,0);top.y=Math.min(top.y,H/2-room/2-top.h/2+top.h*.02);bot.y=Math.max(bot.y,H/2+room/2+bot.h/2-bot.h*.02);
+  return us.map(u=>{delete u.h;return u});
+}
+// billboard: the key word printed huge and faint behind, the full line crisp on top
+function compBillboard(words){
+  let k=0;words.forEach((w,i)=>{if(!isSmall(w)&&w.length>words[k].length||isSmall(words[k]))k=i});
+  const df=pick(['f-black','f-impact']),dm=measure(words[k],df),dfs=Math.min(100*W*.96/dm.w,100*H*.7/dm.h);
+  const us=[{deco:true,text:words[k],font:df,fs:dfs,x:W/2,y:H/2,r:0,op:.16,mods:'outline',from:{x:W/2,y:H/2,r:0,s:1.15}}];
+  const w0=W,h0=H;let st;W=w0*.86;H=h0*.62;try{st=words.length<=3?compCenter(words):compStack(words)}finally{W=w0;H=h0}
+  for(const u of st){u.x+=W*.07;u.y+=H*.19;u.from={x:u.x,y:u.y,r:0,s:1};us.push(u)}
+  return us;
+}
+const upr=d=>{d=((d+180)%360+360)%360-180;return Math.abs(d)>90?d+(d>0?-180:180):d};
+// ===== 15 prototype layouts =====
+// spiral: the line winds inward, each word following the curve
+function compSpiral(words){
+  const f=pick(['f-cond','f-black','f-impact']),ms=words.map(w=>measure(w,f)),n=words.length,cx=W/2,cy=H/2,R0=Math.min(W,H)*.36,gap=.4,sx=Math.min(1.3,W*.4/(Math.min(W,H)*.36));
+  let fs=H*.16,ok=false;
+  for(let k=0;k<50&&!ok;k++){let th=-Math.PI*.95,R=R0;ok=true;
+    for(const m of ms){const ww=m.w*fs/100+gap*fs;th+=ww/R;R=R0*(1-.42*(th+Math.PI*.95)/(Math.PI*2));if(R<R0*.4)ok=false}
+    if(!ok)fs*=.93}
+  let th=-Math.PI*.95,R=R0;const us=[];
+  ms.forEach((m,i)=>{const ww=m.w*fs/100;const a=th+(ww/2)/R;th+=(ww+gap*fs)/R;R=R0*(1-.42*(th+Math.PI*.95)/(Math.PI*2));
+    const rr=R0*(1-.42*(a+Math.PI*.95)/(Math.PI*2)),x=cx+rr*Math.cos(a)*sx,y=cy+rr*Math.sin(a);
+    us.push({ids:[i],font:f,fs,x,y,r:upr(a*180/Math.PI+90),mods:i===n-1?'acc':(i%3===1?'outline':''),from:{x:cx,y:cy,r:0,s:.1}})});
+  return us;
+}
+// corner: the line runs along the top edge and turns down the right side
+function compCorner(words){
+  const f=pick(['f-cond','f-black','f-impact']),n=words.length,h=Math.ceil(n/2),A=words.map((_,i)=>i).slice(0,h),B=words.map((_,i)=>i).slice(h);
+  const ma=measure(A.map(i=>words[i]).join(' '),f),fa=Math.min(100*W*.72/ma.w,100*H*.24/ma.h),ha=ma.h*fa/100,wa=ma.w*fa/100;
+  const us=[{ids:A,font:f,fs:fa,x:W*.05+wa/2,y:H*.07+ha/2,r:0,mods:'',from:{x:-W*.3,y:H*.07+ha/2,r:0,s:1}}];
+  if(B.length){const mb=measure(B.map(i=>words[i]).join(' '),f),fb=Math.min(100*(H*.88-ha)/mb.w,100*W*.2/mb.h),hb=mb.h*fb/100,wb=mb.w*fb/100;
+    us.push({ids:B,font:f,fs:fb,x:W*.95-hb/2,y:H*.07+ha+H*.03+wb/2,r:90,mods:'acc',from:{x:W*.95-hb/2,y:H*1.3,r:90,s:1}})}
+  return us;
+}
+// echo: the line three times, small and faint growing to big and solid
+function compEcho(words){
+  const f=pick(['f-cond','f-black','f-impact']),t=words.join(' '),m=measure(t,f),fs=Math.min(100*W*.86/m.w,100*H*.22/m.h),h=m.h*fs/100;
+  const us=[],y3=H*.5+h*.9;[[.5,.22,2.3],[.72,.45,1.25]].forEach(([k,op,d])=>{us.push({deco:true,text:t,font:f,fs:fs*k,x:W/2,y:y3-h*d,r:0,op,mods:'',from:{x:W/2,y:y3,r:0,s:k}})});
+  us.push({ids:words.map((_,i)=>i),font:f,fs,x:W/2,y:y3,r:0,mods:'acc',from:{x:W/2,y:H*.5,r:0,s:.5}});
+  return us;
+}
+// mirror: the line, with a faint upside-down reflection under it
+function compMirror(words){
+  const f=pick(['f-cond','f-black','f-serif','f-impact']),t=words.join(' '),m=measure(t,f),fs=Math.min(100*W*.86/m.w,100*H*.3/m.h),h=m.h*fs/100,y=H*.42;
+  return[{ids:words.map((_,i)=>i),font:f,fs,x:W/2,y,r:0,mods:'',from:{x:W/2,y:y-H*.2,r:0,s:1}},
+         {deco:true,text:t,font:f,fs,x:W/2,y:y+h*1.02,r:0,op:.28,mods:'mirror',from:{x:W/2,y:y+h*1.02+H*.2,r:0,s:1}}];
+}
+// quote: oversized quotation marks framing the line in a serif face
+function compQuote(words){
+  const f='f-serif',sw=measure(words.join(' '),f),rows=chunk(words.map((_,i)=>i),words,words.length>6?16:12);
+  const qm=measure('“',f),qfs=Math.min(H*.55,100*H*.5/qm.h),qw=qm.w*qfs/100;
+  const tw=W*.9-2*qw,us=[];let tot=0;const rs=rows.map(r=>{const m=measure(r.map(i=>words[i]).join(' '),f),fs=Math.min(100*tw/m.w,100*H*.22/m.h);tot+=m.h*fs/100;return{r,fs,h:m.h*fs/100}});
+  const k=Math.min(1,H*.66/tot);let y=(H-tot*k)/2;
+  rs.forEach((o,j)=>{const hh=o.h*k;us.push({ids:o.r,font:f,fs:o.fs*k,x:W/2,y:y+hh/2,r:0,mods:j===rs.length-1?'acc':'',from:{x:W/2,y:y+hh/2+H*.05,r:0,s:1}});y+=hh});
+  us.push({deco:true,text:'“',font:f,fs:qfs,x:W*.05+qw/2,y:H*.3,r:0,op:.5,mods:'acc',from:{x:W*.05+qw/2,y:H*.3,r:0,s:1.3}});
+  us.push({deco:true,text:'”',font:f,fs:qfs,x:W*.95-qw/2,y:H*.72,r:0,op:.5,mods:'acc',from:{x:W*.95-qw/2,y:H*.72,r:0,s:1.3}});
+  return us;
+}
+// typewriter: small mono text set left like a page, with a block cursor at the end
+function compTypewriter(words){
+  const f='f-mono',rows=chunk(words.map((_,i)=>i),words,14);let fs=H*.14;
+  for(let k=0;k<40;k++){const mw=Math.max(...rows.map(r=>measure(r.map(i=>words[i]).join(' '),f).w))*fs/100;if(mw<=W*.78&&rows.length*fs*1.25<=H*.7)break;fs*=.93}
+  const lh=fs*1.25,top=(H-rows.length*lh)/2,x0=W*.12,us=[];let lastEnd=0,lastY=0;
+  rows.forEach((r,j)=>{const t=r.map(i=>words[i]).join(' '),w=measure(t,f).w*fs/100,y=top+lh*(j+.5);us.push({ids:r,font:f,fs,x:x0+w/2,y,r:0,mods:j===rows.length-1?'acc':'',from:{x:x0+w/2,y,r:0,s:1}});lastEnd=x0+w;lastY=y});
+  us.push({deco:true,text:'▌',font:f,fs,x:lastEnd+fs*.45,y:lastY,r:0,op:.8,mods:'acc',from:{x:lastEnd+fs*.45,y:lastY,r:0,s:1}});
+  return us;
+}
+// headline: a small kicker above, a giant headline, a small line beneath
+function compHeadline(words){
+  const n=words.length;let k=0;words.forEach((w,i)=>{if(!isSmall(w)&&w.length>words[k].length||isSmall(words[k]))k=i});
+  const before=words.map((_,i)=>i).slice(0,k),after=words.map((_,i)=>i).slice(k+1),hf=pick(['f-black','f-impact','f-cond']);
+  const hm=measure(words[k],hf),hfs=Math.min(100*W*.86/hm.w,100*H*.42/hm.h),hh=hm.h*hfs/100,us=[{ids:[k],font:hf,fs:hfs,x:W/2,y:H/2,r:0,mods:'acc',from:{x:W/2,y:H/2,r:0,s:1.3}}];
+  const side=(ids,dir,f)=>{if(!ids.length)return;const m=measure(ids.map(i=>words[i]).join(' '),f),fs=Math.min(100*W*.7/m.w,H*.07),y=H/2+dir*(hh/2+fs*.95);us.push({ids,font:f,fs,x:W/2,y,r:0,mods:'',from:{x:W/2,y:y+dir*H*.1,r:0,s:1}})};
+  side(before,-1,'f-mono');side(after,1,'f-serif');return us;
+}
+// pillars: the line split into two tall vertical columns side by side
+function compPillars(words){
+  const f=pick(['f-cond','f-black','f-impact']),n=words.length,h=Math.ceil(n/2),G=[words.map((_,i)=>i).slice(0,h),words.map((_,i)=>i).slice(h)].filter(g=>g.length);
+  const us=[];G.forEach((g,j)=>{const m=measure(g.map(i=>words[i]).join(' '),f),fs=Math.min(100*H*.84/m.w,100*W*.2/m.h),x=G.length>1?W*(j?.62:.38):W/2;
+    us.push({ids:g,font:f,fs,x,y:H/2,r:-90,mods:j?'acc':'outline',from:{x,y:j?-H*.4:H*1.4,r:-90,s:1}})});
+  return us;
+}
+// banners: each word hangs vertically from the top like a row of flags
+function compBanners(words){
+  const f=pick(['f-cond','f-impact','f-black']),n=words.length,ms=words.map(w=>measure(w,f)),cw=W*.86/n;
+  let fs=Math.min(...ms.map(m=>Math.min(100*H*.78/m.w,100*cw*.85/m.h)));
+  return words.map((w,i)=>{const len=ms[i].w*fs/100,x=W*.07+cw*(i+.5),y=H*.08+len/2;return{ids:[i],font:f,fs,x,y,r:90,mods:i%2?'outline':(len===Math.max(...ms.map(m=>m.w*fs/100))?'acc':''),from:{x,y:-len,r:90,s:1}}});
+}
+// fan: words radiate from a point at the bottom like rays
+function compFan(words){
+  const f=pick(['f-cond','f-black','f-impact']),n=words.length,ms=words.map(w=>measure(w,f)),ox=W/2,oy=H*.96,spread=Math.min(150,30+n*20)*Math.PI/180;
+  let fs=H*.2;const maxW=Math.max(...ms.map(m=>m.w));for(let k=0;k<40;k++){if(maxW*fs/100+H*.12+ms[0].h*fs/100<=Math.min(H*.84,W*.42))break;fs*=.93}
+  const inner=H*.12;
+  return words.map((w,i)=>{const a=-Math.PI/2-spread/2+spread*(n>1?i/(n-1):.5),len=ms[i].w*fs/100,d=inner+len/2,x=ox+d*Math.cos(a),y=oy+d*Math.sin(a);
+    return{ids:[i],font:f,fs,x,y,r:upr(a*180/Math.PI),mods:i===n-1?'acc':(i%2?'outline':''),from:{x:ox,y:oy,r:upr(a*180/Math.PI),s:.2}}});
+}
+// ransom: every word in a different face, size and slight tilt, packed into rows
+function compRansom(words){
+  const faces=['f-cond','f-serif','f-impact','f-black','f-mono'],maxW=W*.86,cfg=words.map((w,i)=>({f:faces[(i*3+hashStr(w))%faces.length],k:.6+((hashStr(w)>>>3)%50)/100,r:((hashStr(w)>>>5)%9)-4}));
+  const lay=base=>{const rows=[];let row=[],rw=0;words.forEach((w,i)=>{const c=cfg[i],m=measure(w,c.f),fs=base*c.k,ww=m.w*fs/100,hh=m.h*fs/100,gap=base*.18;if(row.length&&rw+gap+ww>maxW){rows.push({row,rw});row=[];rw=0}row.push({i,c,fs,ww,hh});rw+=(row.length>1?gap:0)+ww});if(row.length)rows.push({row,rw});return rows};
+  let base=H*.3,rows;for(let k=0;k<40;k++){rows=lay(base);const th=rows.reduce((a,r)=>a+Math.max(...r.row.map(x=>x.hh))*1.1,0);if(th<=H*.78&&rows.every(r=>r.rw<=maxW))break;base*=.92}
+  const tot=rows.reduce((a,r)=>a+Math.max(...r.row.map(x=>x.hh))*1.1,0),us=[];let y=(H-tot)/2;
+  for(const r of rows){const rh=Math.max(...r.row.map(x=>x.hh))*1.1;let x=(W-r.rw)/2;for(const c of r.row){us.push({ids:[c.i],font:c.c.f,fs:c.fs,x:x+c.ww/2,y:y+rh/2,r:c.c.r,mods:c.i%4===1?'acc':(c.i%4===3?'outline':''),from:{x:x+c.ww/2,y:y+rh/2,r:c.c.r*4,s:0}});x+=c.ww+base*.18}y+=rh}
+  return us;
+}
+// tilt: a stacked block where each row leans the opposite way
+function compTilt(words){
+  const st=compStack(words);st.forEach((u,i)=>{u.r=i%2?3.5:-3.5;u.fs*=.92;u.from={x:u.x+(i%2?W*.6:-W*.6),y:u.y,r:u.r*3,s:1}});return st;
+}
+// bookends: first and last word stand vertical at the edges, the rest in the middle
+function compBookends(words){
+  const n=words.length,f=pick(['f-cond','f-impact']),cf=pick(['f-black','f-serif']);
+  const side=(i,left)=>{const m=measure(words[i],f),fs=Math.min(100*H*.86/m.w,100*W*.16/m.h),th=m.h*fs/100,x=left?W*.04+th/2:W*.96-th/2;return{u:{ids:[i],font:f,fs,x,y:H/2,r:left?-90:90,mods:left?'':'acc',from:{x:left?-W*.2:W*1.2,y:H/2,r:left?-90:90,s:1}},th}};
+  const a=side(0,true),b=side(n-1,false),mid=words.map((_,i)=>i).slice(1,-1),us=[a.u,b.u];
+  if(mid.length){const x0=W*.04+a.th+W*.04,x1=W*.96-b.th-W*.04,w0=W,h0=H;let st;W=x1-x0;H=h0*.8;try{st=compStack(mid.map(i=>words[i]))}finally{W=w0;H=h0}
+    for(const u of st){u.ids=u.ids.map(k=>mid[k]);u.x+=x0;u.y+=H*.1;u.from={x:u.x,y:u.y,r:0,s:1};u.mods=(u.mods||'').replace('acc','').trim();us.push(u)}}
+  return us;
+}
+// diamond: rows grow then shrink, like a diamond
+function compDiamond(words){
+  const f=pick(['f-cond','f-black','f-impact']),n=words.length,sizes=[];let l=n,k=1,up=true;
+  while(l>0){sizes.push(Math.min(k,l));l-=k;if(up&&k>=Math.ceil(Math.sqrt(n)))up=false;k+=up?1:-1;if(k<1)k=1}
+  const rows=[];let i=0;for(const z of sizes){rows.push(words.slice(i,i+z).map((_,j)=>i+j));i+=z}
+  const R=rows.length,mid=(R-1)/2,us=rows.map((r,j)=>{const m=measure(r.map(q=>words[q]).join(' '),f),frac=R>1?1-Math.abs(j-mid)/Math.max(1,mid):1,tw=W*(.3+.55*frac);const fs=Math.min(100*tw/m.w,100*H*.24/m.h);return{ids:r,fs,h:m.h*fs/100}});
+  let tot=us.reduce((a,u)=>a+u.h,0)*1.04;const sc=Math.min(1,H*.82/tot);tot*=sc;let y=(H-tot)/2;
+  return us.map((u,j)=>{const hh=u.h*sc,yy=y+hh/2;y+=hh*1.04;return{ids:u.ids,font:f,fs:u.fs*sc,x:W/2,y:yy,r:0,mods:Math.abs(j-mid)<.6?'acc':(j%2?'outline':''),from:{x:W/2,y:H/2,r:0,s:.2}}});
+}
+// ring: the first word large in the centre, the rest orbiting it on an ellipse
+function compRing(words){
+  const n=words.length,cf=pick(['f-black','f-impact','f-serif']),rf=pick(['f-cond','f-mono']),cm=measure(words[0],cf);
+  const cfs=Math.min(100*W*.4/cm.w,100*H*.3/cm.h),us=[{ids:[0],font:cf,fs:cfs,x:W/2,y:H/2,r:0,mods:'acc',from:{x:W/2,y:H/2,r:0,s:.3}}];
+  const rest=words.map((_,i)=>i).slice(1),rx=W*.38,ry=H*.36;
+  rest.forEach((id,j)=>{const a=-Math.PI/2+j*2*Math.PI/rest.length,m=measure(words[id],rf),fs=Math.min(100*W*.2/m.w,H*.1),x=W/2+rx*Math.cos(a),y=H/2+ry*Math.sin(a);
+    us.push({ids:[id],font:rf,fs,x,y,r:0,mods:j%2?'outline':'',from:{x:W/2,y:H/2,r:0,s:0}})});
+  return us;
+}
+
+const COMPS={zigzag:compZigzag,cross:compCross,frame:compFrame,tower:compTower,chaos:compChaos,stack:compStack,hero:compHero,scatter:compScatter,diag:compDiag,center:compCenter,flow:compFlow,stair:compStair,column:compColumn,split:compSplit,grid:compGrid,arc:compArc,pyramid:compPyramid,initial:compInitial,caps:compCaps,climb:compClimb,wave:compWave,sandwich:compSandwich,billboard:compBillboard,spiral:compSpiral,corner:compCorner,echo:compEcho,mirror:compMirror,quote:compQuote,typewriter:compTypewriter,headline:compHeadline,pillars:compPillars,banners:compBanners,fan:compFan,ransom:compRansom,tilt:compTilt,bookends:compBookends,diamond:compDiamond,ring:compRing};
+S.layout='auto';S.chaos=.35;S.carry=true;
+// controlled choice: decided by the line itself and where it sits in the verse
+function layoutFor(words,ctx){
+  const n=words.length;
+  if(ctx.adlibOnly)return'center';
+  const fits=L=>({stair:n<=7,column:n<=7,grid:n<=9,zigzag:n>=2&&n<=6,cross:n>=3&&n<=10,frame:n>=4&&n<=10,tower:n>=3&&n<=9,chaos:n>=2&&n<=9,arc:n>=3&&n<=8,pyramid:n>=3&&n<=10,caps:n>=3&&n<=7,climb:n>=3&&n<=7,wave:n>=3&&n<=7,sandwich:n>=3&&n<=12,billboard:n>=2&&n<=9,spiral:n>=3&&n<=5,corner:n>=2&&n<=10,echo:n>=2&&n<=7,mirror:n>=2&&n<=8,quote:n>=3&&n<=14,typewriter:n>=2&&n<=16,headline:n>=2&&n<=10,pillars:n>=3&&n<=10,banners:n>=3&&n<=7,fan:n>=3&&n<=5,ransom:n>=3&&n<=10,tilt:n>=3&&n<=10,bookends:n>=3&&n<=9,diamond:n>=4&&n<=12,ring:n>=4&&n<=7,initial:n>=2&&n<=12&&/^[\p{L}\p{N}]/u.test(words[0]||'')}[L]??true);
+  if(S.layout!=='auto'&&S.layout!=='classic'&&COMPS[S.layout])return fits(S.layout)?S.layout:'flow';
+  const scn=sceneOf();
+  if(scn&&!(ctx.dur&&ctx.dur<1.5)&&n>2){
+    const pool=scn.layouts.filter(fits);
+    if(pool.length){const h0=hashStr((ctx.text||words.join(' ')).toLowerCase());
+      // chorus lines: fixed by their text; others: walk the pool through the section
+      let j=ctx.chorus?h0+(ctx.rep||0)*3:(S.sec.i||0)+(S.sec.num||1)*2+(ctx.rep||0);let L=pool[j%pool.length];
+      if(L===S.prevLay&&pool.length>1)L=pool[(j+1)%pool.length];return L}}
+  // controlled chaos: a fixed share of lines (picked by the line's own text) get an unconventional structure
+  const h=hashStr(words.join(' ').toLowerCase());
+  let chaosEff=S.moodOn?Math.min(1,S.chaos*(.45+S.mood.intensity*1.1)):S.chaos;const scc=sceneOf();if(scc)chaosEff=Math.min(1,chaosEff*scc.chaos);
+  if(chaosEff>0&&n>=3&&!(ctx.dur&&ctx.dur<1.5)&&(h%100)<chaosEff*100){
+    const pool=['zigzag','cross','frame','tower','chaos'].filter(fits);if(pool.length){let L=pool[((h>>>8)+(ctx.rep||0))%pool.length];if(L===S.prevLay&&pool.length>1)L=pool[((h>>>8)+(ctx.rep||0)+1)%pool.length];return L}}
+  if(n<=2)return'hero';
+  if(ctx.dur&&ctx.dur<1.5)return n<=6?'center':'flow';
+  if(ctx.first)return n<=6?'hero':'diag';
+  if(ctx.last)return n<=9?'stack':'flow';
+  const pool=(n<=4?['stair','column','grid','split','arc','initial','climb','billboard','headline','echo','mirror','corner','pillars','banners','fan','ring']:n<=7?['flow','stair','split','column','grid','arc','pyramid','caps','initial','climb','wave','sandwich','billboard','spiral','corner','echo','mirror','quote','typewriter','headline','pillars','banners','fan','ransom','tilt','bookends','diamond','ring']:n<=12?['flow','split','stack','pyramid','initial','sandwich','quote','typewriter','ransom','tilt','diamond','corner','pillars']:['flow','stack','typewriter','quote']).filter(fits);
+  let L=pool[(ctx.k+(ctx.rep||0))%pool.length];if(L===S.prevLay&&pool.length>1)L=pool[(ctx.k+(ctx.rep||0)+1)%pool.length];return L;
+}
+function composeOne(words){
+  if(S.ghost){S.lastComp='diag';return compDiag(words)}
+  const n=words.length;
+  if(S.layout==='classic'){
+    let opts=n<=2?['hero','hero','diag']:n<=7?['hero','scatter','stack','diag','stack']:n<=12?['stack','diag','hero']:['stack'];
+    const f=opts.filter(o=>o!==S.lastComp);if(f.length)opts=f;
+    S.lastComp=pick(opts);return COMPS[S.lastComp](words);}
+  const ctx=S.lineCtx||{};S.lastComp=layoutFor(words,ctx);S.prevLay=S.lastComp;
+  RNG=seeded(hashStr(words.join(' ').toLowerCase()+'|'+S.lastComp+'|'+((S.lineCtx&&S.lineCtx.rep)||0)));   // same line -> same design, every time
+  try{const us=COMPS[S.lastComp](words);
+    if(ctx.chorus){let big=null;for(const u of us)if(!u.deco&&(!big||u.fs>big.fs))big=u;if(big)big.mods=(big.mods||'').replace('outline','').trim()+' acc'}
+    if(ctx.adlibOnly)for(const u of us){u.fs*=.6;u.mods='';u.font='f-serif'}
+    return us}finally{RNG=null}
+}
+
+// run a composition inside one screen's box (compositions use W,H as their canvas)
+function inScreen(scr,fn){const w=W,h=H;W=scr.w;H=scr.h;try{return fn()}finally{W=w;H=h}}
+function compose(words){const R0=streamOn()&&S.idx>=0?S.scene:(S.region||S.scene);return[{scr:R0,units:inScreen(R0,()=>{const us=(streamOn()&&S.idx>=0?compStream(words):declutter(composeOne(words),words));
+  if(RTL.test(words.join(' ')))for(const u of us){u.x=W-u.x;if(u.from)u.from.x=W-u.from.x;if(u.r)u.r=-u.r}
+  S.followZ=0;
+  if(camEff()==='follow'&&camOn()&&words.length>=4&&!(S.lineCtx&&S.lineCtx.dur&&S.lineCtx.dur<2)&&camPick(words)){
+    let Z=1.6;for(const u of us){if(u.deco)continue;const b=boxOf(u,words);Z=Math.min(Z,.8*W/Math.max(1,b.x1-b.x0),.62*H/Math.max(1,b.y1-b.y0))}
+    if(Z>=1.3){const cx=W/2,cy=H/2;for(const u of us){u.x=cx+(u.x-cx)*Z;u.y=cy+(u.y-cy)*Z;u.fs*=Z;if(u.from){u.from.x=cx+(u.from.x-cx)*Z;u.from.y=cy+(u.from.y-cy)*Z}}S.followZ=Z;
+      const L=S.lastComp||'',path=['arc','spiral','wave','climb','banners','fan','zigzag','chaos','diag'],stacked=['stack','caps','pyramid','diamond','typewriter','quote','sandwich','stair','column','tilt','tower','headline','split','grid'],
+        rows=new Set(us.filter(u=>!u.deco).map(u=>Math.round(u.y/(H*.08)))).size,h=hashStr(words.join(' ')+'|shot');
+      S.camShot=path.includes(L)?(h%4===0?'open':'follow'):stacked.includes(L)&&rows>=2?(h%3===0?'open':'crane'):rows<=1?(h%2?'dolly':'open'):['follow','open','dolly'][h%3]}}
+  if(camEff()==='stream'&&camOn()&&S.lastComp!=='stream'){let y0=1e9,y1=-1e9;for(const u of us){if(u.deco)continue;const b=boxOf(u,words);y0=Math.min(y0,b.y0);y1=Math.max(y1,b.y1)}
+    const f=y1>y0?Math.max(.55,Math.min(1,.4*H/(y1-y0))):1;
+    if(f<1){const cx=W/2,cy=(y0+y1)/2;for(const u of us){u.x=cx+(u.x-cx)*f;u.y=cy+(u.y-cy)*f;u.fs*=f;if(u.from){u.from.x=cx+(u.from.x-cx)*f;u.from.y=cy+(u.from.y-cy)*f}}}}
+  return us})}]}
+// real footprint of a unit (rotated box), then shrink anything that touches until nothing overlaps
+function boxOf(u,words){
+  const txt=u.deco?u.text:u.ids.map(i=>words[i]).join(' '),m=measure(txt,u.font),k=u.fs/100;
+  const w=m.w*k,h=m.h*k,a=Math.abs((u.r||0)*Math.PI/180),c=Math.cos(a),sn=Math.sin(a);
+  const bw=w*c+h*sn,bh=w*sn+h*c;return{x0:u.x-bw/2,x1:u.x+bw/2,y0:u.y-bh/2,y1:u.y+bh/2,w,h};
+}
+function declutter(units,words){
+  const real=units.filter(u=>!u.deco);if(real.length<2&&!real.some(u=>boxOf(u,words).x1>W))return fit(units,words);
+  const pad=Math.min(W,H)*.012;real.forEach(u=>u.fs0=u.fs0||u.fs);
+  for(let it=0;it<80;it++){
+    let hit=false;const B=real.map(u=>boxOf(u,words));
+    for(let i=0;i<real.length;i++)for(let j=i+1;j<real.length;j++){
+      const a=B[i],b=B[j];
+      if(a.x0<b.x1+pad&&b.x0<a.x1+pad&&a.y0<b.y1+pad&&b.y0<a.y1+pad){
+        hit=true;
+        // shrink the bigger one more; also nudge them apart along the axis of least overlap
+        const big=(a.w*a.h>b.w*b.h)?i:j,sm=big===i?j:i;
+        if(real[big].fs>real[big].fs0*.5)real[big].fs*=.92;if(real[sm].fs>real[sm].fs0*.6)real[sm].fs*=.97;
+        const ox=Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0),oy=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0);
+        const ui=real[i],uj=real[j];
+        if(ox<oy){const d=(ui.x<uj.x?-1:1)*(ox+pad)*.3;ui.x+=d;uj.x-=d}else{const d=(ui.y<uj.y?-1:1)*(oy+pad)*.3;ui.y+=d;uj.y-=d}
+      }
+    }
+    if(!hit)break;
+  }
+  return fit(units,words);
+}
+// keep every unit fully inside the scene
+function fit(units,words){
+  const m=Math.min(W,H)*.02;
+  for(const u of units){if(u.deco)continue;
+    for(let k=0;k<8;k++){const b=boxOf(u,words);const bw=b.x1-b.x0,bh=b.y1-b.y0;
+      if(bw>W-2*m||bh>H-2*m){u.fs*=.9;continue}
+      if(b.x0<m)u.x+=m-b.x0;if(b.x1>W-m)u.x-=b.x1-(W-m);if(b.y0<m)u.y+=m-b.y0;if(b.y1>H-m)u.y-=b.y1-(H-m);break}
+    u.from.x+=0;}
+  return units;
+}
+
+// biggest rectangle that sits fully inside the screens (so a line never gets cut by the dead corners)
+function bestRect(scs){
+  const xs=[...new Set(scs.flatMap(r=>[r.x,r.x+r.w]))].sort((a,b)=>a-b),ys=[...new Set(scs.flatMap(r=>[r.y,r.y+r.h]))].sort((a,b)=>a-b);
+  const ok=(x,y)=>scs.some(r=>x>r.x&&x<r.x+r.w&&y>r.y&&y<r.y+r.h);
+  const C=xs.slice(0,-1).map((x,i)=>ys.slice(0,-1).map((y,j)=>ok((x+xs[i+1])/2,(y+ys[j+1])/2)));
+  let best=null,ba=0;
+  for(let i1=0;i1<xs.length-1;i1++)for(let i2=i1+1;i2<xs.length;i2++)
+    for(let j1=0;j1<ys.length-1;j1++)for(let j2=j1+1;j2<ys.length;j2++){
+      let all=true;for(let i=i1;i<i2&&all;i++)for(let j=j1;j<j2;j++)if(!C[i][j]){all=false;break}
+      if(!all)continue;const w=xs[i2]-xs[i1],h=ys[j2]-ys[j1];if(w*h>ba){ba=w*h;best={x:xs[i1],y:ys[j1],w,h}}
+    }
+  return best||scs[0];
+}
+
+/* ---------- line rendering ---------- */
+const CJK=/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u,RTL=/[\p{Script=Arabic}\p{Script=Hebrew}]/u;
+const SEG=typeof Intl!=='undefined'&&Intl.Segmenter?new Intl.Segmenter(undefined,{granularity:'word'}):null;
+// split a line into words; Chinese/Japanese have no spaces, so segment them into words/characters
+function tokenize(text){
+  if(!CJK.test(text))return text.split(/\s+/).filter(Boolean);
+  const out=[];
+  if(SEG){for(const sg of SEG.segment(text)){const t=sg.segment.trim();if(!t)continue;if(!sg.isWordLike&&out.length&&/^[\p{P}\p{S}]+$/u.test(t)){out[out.length-1]+=t;continue}out.push(t)}}
+  else for(const ch of text.replace(/\s+/g,''))out.push(ch);
+  // merge tiny fragments so a line isn't 30 one-character units
+  const m=[];for(const t of out){if(m.length&&m[m.length-1].length<2&&CJK.test(t)&&t.length<2)m[m.length-1]+=t;else m.push(t)}
+  return m;
+}
+function wordTimes(words,t0,t1){
+  const span=Math.min((t1-t0)*.72,words.length*.42),wt=words.map(w=>w.length+2),tot=wt.reduce((a,b)=>a+b,0);
+  let acc=0;return wt.map(x=>{const t=t0+span*acc/tot;acc+=x;return t});
+}
+function fallOut(e,stagger=55){
+  let k=0,end=0;const vh=innerHeight;
+  for(const el of e.querySelectorAll('.u')){if(el.style.visibility==='hidden')continue;
+    const r=el.getBoundingClientRect();if(!r.height)continue;
+    const f=S.exitFast||1,dist=vh-r.top+r.height*.15+60,dur=Math.round((650+520*Math.min(1.6,dist/vh))*f),delay=Math.round(k++*stagger*f);
+    el.animate([{translate:'0 0',rotate:'0deg',opacity:1},{opacity:1,offset:.35},{translate:`${rnd(-r.width*.15,r.width*.15)}px ${dist}px`,rotate:`${rnd(-28,28)}deg`,opacity:0}],
+      {duration:dur,delay,easing:'cubic-bezier(.5,0,.85,.4)',fill:'forwards'});
+    end=Math.max(end,delay+dur)}
+  return end;
+}
+// y (in scene coords) that is fully above the top of the whole canvas
+const aboveTop=(i=0)=>-(S.scene?S.scene.y:0)-H*.45-i*H*.08;
+const THEMES={
+  slam:{in:(u,i)=>({x:u.x+(i%2?1:-1)*W*.7,y:u.y,r:u.r||0,s:1}),
+        out:(e,sc)=>{e.style.transform=`translateX(${pick([-1,1])*sc.w*.6}px) skewX(${rnd(-20,20)}deg)`;e.style.opacity=0}},
+  drop:{in:u=>({x:u.x,y:aboveTop(),r:(u.r||0)+rnd(-8,8),s:1}),
+        out:e=>fallOut(e,30)},
+  zoom:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:3.2}),
+        out:e=>{e.style.transform='scale(2.2)';e.style.opacity=0}},
+  spin:{in:u=>({x:u.x,y:u.y,r:(u.r||0)+pick([-1,1])*160,s:.15}),
+        out:e=>{e.style.transform=`rotate(${pick([-1,1])*30}deg) scale(.2)`;e.style.opacity=0}},
+  fade:{in:u=>({x:u.x,y:u.y+H*.03,r:u.r||0,s:1.04}),
+        out:e=>{e.style.transform=`translateY(${-H*.03}px)`;e.style.opacity=0}},
+  wipe:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1}),
+        out:(e,sc)=>{e.style.transform=`translateX(${sc.w*.15}px)`;e.style.opacity=0}},
+  rise:{in:u=>({x:u.x,y:u.y+H*.06,r:u.r||0,s:1}),
+        out:(e,sc)=>{e.style.transform=`translateY(${-sc.h*.3}px)`;e.style.opacity=0}},
+  glitch:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1}),
+        out:e=>{e.classList.add('ex-glitch')}},
+  pop:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:.3}),
+        out:e=>{e.style.transform='scale(.6)';e.style.opacity=0}},
+  collide:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1}),
+        out:(e,sc)=>{const cx=sc.w/2,cy=sc.h/2;for(const el of e.querySelectorAll('.u')){if(el.style.visibility==='hidden')continue;
+          const m=/translate\(([-\d.]+)px, ?([-\d.]+)px\)/.exec(el.style.transform)||[0,cx,cy],dx=m[1]-cx,dy=m[2]-cy,d=Math.hypot(dx,dy)||1;
+          el.animate([{translate:'0 0',scale:1,opacity:1},{translate:`${dx/d*sc.w*.35}px ${dy/d*sc.h*.35}px`,scale:1.6,opacity:0}],
+            {duration:Math.round(520*(S.exitFast||1)),easing:'cubic-bezier(.1,.7,.3,1)',fill:'forwards'})}}},
+  gravity:{in:(u,i)=>({x:u.x+rnd(-W*.03,W*.03),y:aboveTop(i),r:(u.r||0)+rnd(-14,14),s:1}),
+        out:e=>fallOut(e,55)},
+  // 3D
+  flip:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1,ex:'rotateX(-100deg)',id:'rotateX(0deg)'}),
+        out:e=>{e.style.transform='perspective(1600px) rotateX(85deg)';e.style.opacity=0}},
+  swing:{in:(u,i)=>({x:u.x,y:u.y,r:u.r||0,s:1,ex:`rotateY(${i%2?95:-95}deg)`,id:'rotateY(0deg)'}),
+        out:e=>{e.style.transform='perspective(1600px) rotateY(-80deg)';e.style.opacity=0}},
+  // shape
+  stretch:{in:(u,i)=>({x:u.x+(i%2?1:-1)*W*.25,y:u.y,r:u.r||0,s:1,ex:'scale(3.2,.35)',id:'scale(1,1)'}),
+        out:(e,sc)=>{e.style.transform=`translateX(${sc.w*.2}px) scale(3,.3)`;e.style.opacity=0}},
+  squash:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1,ex:'scale(1.4,0)',id:'scale(1,1)'}),
+        out:e=>{e.style.transform='scale(1.3,0)';e.style.opacity=0}},
+  rubber:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1,ex:'scale(.2,1.9)',id:'scale(1,1)'}),
+        out:e=>{e.style.transform='scale(.1,1.6)';e.style.opacity=0}},
+  skew:{in:u=>({x:u.x,y:u.y+H*.25,r:u.r||0,s:1,ex:'skewX(-38deg)',id:'skewX(0deg)'}),
+        out:(e,sc)=>{e.style.transform=`translateY(${-sc.h*.2}px) skewX(35deg)`;e.style.opacity=0}},
+  // movement
+  fly:{in:u=>{const a=Math.random()*Math.PI*2,d=Math.max(W,H)*.8;return{x:u.x+Math.cos(a)*d,y:u.y+Math.sin(a)*d,r:(u.r||0)+rnd(-120,120),s:.6}},
+        out:(e,sc)=>{const a=Math.random()*Math.PI*2;e.style.transform=`translate(${Math.cos(a)*sc.w*.6}px,${Math.sin(a)*sc.h*.6}px) rotate(${rnd(-60,60)}deg)`;e.style.opacity=0}},
+  orbit:{in:u=>{const cx=W/2,cy=H/2,dx=u.x-cx,dy=u.y-cy,a=pick([-1,1])*1.4,c=Math.cos(a),sn=Math.sin(a);return{x:cx+dx*c-dy*sn,y:cy+dx*sn+dy*c,r:(u.r||0)+a*57,s:.5}},
+        out:e=>{e.style.transform=`rotate(${pick([-1,1])*45}deg) scale(.4)`;e.style.opacity=0}},
+  // reveals
+  split:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1}),
+        out:e=>{e.style.transform='scale(1,.02)';e.style.opacity=0}},
+  iris:{in:u=>({x:u.x,y:u.y,r:u.r||0,s:1.08}),
+        out:e=>{e.style.transform='scale(.85)';e.style.opacity=0}},
+  // letter by letter
+  cascade:{letters:true,in:u=>({x:u.x,y:u.y,r:u.r||0,s:1}),
+        out:(e,sc)=>{e.style.transform=`translateY(${sc.h*.25}px)`;e.style.opacity=0}},
+  wave:{letters:true,in:u=>({x:u.x,y:u.y,r:u.r||0,s:1}),
+        out:(e,sc)=>{e.style.transform=`translateY(${-sc.h*.2}px)`;e.style.opacity=0}},
+};
+const THEME_SETS={mixed:Object.keys(THEMES).filter(t=>t!=='glitch'),energetic:['collide','gravity','slam','drop','pop','spin','zoom','stretch','squash','rubber','fly','flip','skew'],smooth:['fade','wipe','rise','zoom','iris','split','swing','cascade','wave','orbit'],letters:['cascade','wave']};
+S.theme='mixed';
+function pickTheme(){
+  if(S.low)return pick(['fade','rise','wipe']);
+  if(THEMES[S.theme]&&S.theme!=='glitch')return S.theme;
+  // a chorus line always gets the same transition, so the chorus feels like a recurring 'shot'
+  if(S.lineCtx&&S.lineCtx.chorus&&S.lineCtx.text){const scn0=sceneOf();const set=(scn0&&S.theme==='mixed'?scn0.themes:(THEME_SETS[S.theme]||THEME_SETS.mixed)).filter(t=>t!=='glitch');let j=hashStr(S.lineCtx.text.toLowerCase())+(S.lineCtx.rep||0)*5,t=set[j%set.length];if(t===S.lastTheme&&set.length>1)t=set[(j+1)%set.length];return S.lastTheme=t}
+  let set=THEME_SETS[S.theme]||THEME_SETS.mixed;
+  if(S.theme==='mixed'&&S.moodOn){const m=S.moodNow;set=m<.35?THEME_SETS.smooth:m>.66?THEME_SETS.energetic:set}
+  const scn=sceneOf();if(scn&&S.theme==='mixed')set=scn.themes;
+  const o=set.filter(t=>t!==S.lastTheme);
+  return S.lastTheme=pick(o.length?o:set);
+}
+function build(words,times,lineT,lineDur,custom){
+  const g=document.createElement('div');g.className='grp';
+  const parts=custom?[{scr:S.scene,units:custom}]:compose(words),U=[],spans=[],P=[],th=pickTheme(),TH=THEMES[th];
+  // fast lines (rap verses): squeeze every animation so it finishes well inside the line
+  let fast=lineDur&&lineDur<2.4?Math.max(.28,lineDur/2.4):1;
+  if(S.moodOn){const b=S.mood.bpm,sp=b?(b>140?.82:b<85?1.25:1):1,e=S.moodNow<.3?1.15:S.moodNow>.7?.88:1;fast=Math.min(1.35,fast*sp*e)}
+  for(const part of parts){
+    const sc=part.scr,box=document.createElement('div'),exit=document.createElement('div'),cam=document.createElement('div');
+    box.className='box';exit.className='exit';cam.className='cam';
+    Object.assign(box.style,{left:sc.x+'px',top:sc.y+'px',width:sc.w+'px',height:sc.h+'px'});
+    box.appendChild(exit);exit.appendChild(cam);g.appendChild(box);P.push({scr:sc,exit,cam});
+    if(S.ghost)part.units.forEach(u=>{u.mods='ghost';u.op=u.deco?u.op*.6:.45});
+    for(const u of part.units){
+      const el=document.createElement('div');el.className='u '+u.font+' '+(u.mods||'');el.style.fontSize=u.fs+'px';
+      if(u.deco){if((u.mods||'').includes('mirror')){const sp=document.createElement('span');sp.style.cssText='display:inline-block;transform:scaleY(-1);-webkit-mask-image:linear-gradient(to top,#000,transparent 85%)';sp.textContent=u.text;el.appendChild(sp)}else el.textContent=u.text}
+      else{if(RTL.test(words.join(' ')))el.dir='rtl';u.ids.forEach((id,j)=>{const sp=document.createElement('span');sp.className='ws';sp.textContent=words[id];el.appendChild(sp);if(j<u.ids.length-1)el.appendChild(document.createTextNode(CJK.test(words[id])?'':' '));spans.push({el:sp,t:times[id],w:words[id],i:id,next:times[id+1]??null})})}
+      const fr=inScreen(sc,()=>TH.in(u,U.length));el.classList.add('t-'+th);
+      if(fast<1){el.style.transitionDuration=(.7*fast).toFixed(2)+'s';el.style.transitionDelay='0s';el.style.animationDuration=(.45*fast).toFixed(2)+'s'}
+      else if(fast>1.02)el.style.transitionDuration=(.9*fast).toFixed(2)+'s';
+      const pre=fr.ex?'perspective(1600px) ':'',post=fr.ex?' '+fr.ex:'',postF=fr.ex?' '+fr.id:'';
+      el.style.transform=pre+T(fr.x,fr.y,fr.r,fr.s)+post;el.style.opacity=0;
+      // reveal masks (wipe/rise/split/iris) would clip the glow into a hard box once finished -> drop the mask after the reveal
+      if(th==='wipe'||th==='rise'||th==='split'||th==='iris')el.addEventListener('transitionend',ev=>{if(ev.propertyName==='clip-path'&&el.classList.contains('on'))el.style.clipPath='none'});
+      if(TH.letters&&!u.deco){let li=0;for(const sp of el.querySelectorAll('.ws')){const txt=sp.textContent,trail=/\s$/.test(txt);sp.textContent='';
+        for(const ch of txt.trimEnd()){const l=document.createElement('span');l.className='l';l.textContent=ch;l.style.setProperty('--i',li++%14);sp.appendChild(l)}
+        if(trail)sp.appendChild(document.createTextNode(' '))}}
+      cam.appendChild(el);
+      const key=u.deco?null:u.ids.map(i=>words[i]).join(' ').toLowerCase().replace(/[^\p{L}\p{N}' ]/gu,'');
+      const rec={el,t:u.deco?lineT:Math.min(...u.ids.map(i=>times[i])),final:pre+T(u.x,u.y,u.r||0,1)+postF,from:el.style.transform,op:u.op??1,on:false,key,deco:!!u.deco,theta:u.theta,geo:{x:u.x,y:u.y,r:u.r||0,fs:u.fs}};
+      // a word that was on screen in the previous line travels from its old spot instead of re-entering
+      const old=S.carryFrom&&key&&S.carryFrom.find(o=>o.key===key&&o.on&&!o.used);
+      if(old&&S.carry&&!fr.ex){old.used=true;old.el.style.visibility='hidden';
+        rec.from=T(old.geo.x,old.geo.y,old.geo.r,old.geo.fs/u.fs);el.style.transform=rec.from;el.style.opacity=1;
+        el.classList.remove('t-'+th);el.classList.add('t-carry','carried');rec.t=lineT}
+      if(th==='collide'&&!u.deco&&!el.classList.contains('carried'))rec.collide=true;
+      U.push(rec);
+    }
+  }
+  if(th==='collide'){
+    const C=U.filter(r=>r.collide),sc=parts[0].scr,dur=Math.round(1000*Math.max(.45,fast));
+    C.forEach((r,k)=>{
+      const mate=C[k^1]||null,g0=r.geo,mid=mate?{x:(g0.x+mate.geo.x)/2,y:(g0.y+mate.geo.y)/2}:{x:sc.w/2,y:g0.y};
+      let dir=Math.sign(g0.x-mid.x)||(k%2?1:-1);
+      const st=T(mid.x+dir*sc.w*.75,mid.y+(g0.y-mid.y)*.3,g0.r,1),hit=T(mid.x+dir*sc.w*.012,mid.y,g0.r,.55)+' scale(.6,1.35)',
+            over=T(g0.x,g0.y,g0.r,1.16)+' scale(1.12,.9)',fin=T(g0.x,g0.y,g0.r,1)+' scale(1,1)';
+      r.kf=[{transform:st+' scale(1,1)',offset:0,easing:'cubic-bezier(.5,0,.9,.5)'},{transform:hit,offset:.42,easing:'cubic-bezier(.1,.8,.3,1)'},
+            {transform:over,offset:.72,easing:'cubic-bezier(.3,0,.3,1)'},{transform:fin,offset:1}];
+      r.kfDur=dur;r.final=fin;r.t=lineT;r.el.classList.add('carried');r.el.style.transform=st+' scale(1,1)';
+      r.impact={x:sc.x+mid.x,y:sc.y+mid.y,at:dur*.42};
+    });
+  }
+  stage.appendChild(g);g.offsetWidth;
+  if(S.dive&&(S.dive.idx!==S.idx||performance.now()-S.dive.at>1500))S.dive=null;
+  if(S.dive){const d=S.dive;S.dive=null;const K=d.sc.length-1,at=`at ${d.cx.toFixed(1)}px ${d.cy.toFixed(1)}px`;
+    g.style.clipPath=`circle(${d.r0.toFixed(1)}px ${at})`;
+    const a=g.animate(d.sc.map((s,k)=>({clipPath:`circle(${(d.r0*s).toFixed(1)}px ${at})`,offset:k/K})),{duration:d.dur,easing:d.ease});
+    a.onfinish=()=>{g.style.clipPath=''}}
+  // choreography camera: only inside detected sections (no push-in on ordinary lines)
+  const scn=sceneOf(),R6=S.react||.6;
+  if(!S.low&&lineDur>1.2&&scn&&S.sec&&!camOn()){
+    const f0=S.sec.n>1?S.sec.i/(S.sec.n-1):0,f1=S.sec.n>1?Math.min(1,(S.sec.i+1)/(S.sec.n-1)):1;
+    const push=scn.push,s0=scn.ramp?1+push*f0*1.6:1,dir=(S.sec.num%2?1:-1),pan0=(f0-.5)*2*scn.pan*dir,pan1=(f1-.5)*2*scn.pan*dir;
+    const W0=(S.region||S.scene||{w:1000}).w;
+    for(const q of P){q.cam.animate([{scale:s0},{scale:s0+push*R6}],{duration:lineDur*1000,easing:'linear',fill:'forwards',composite:'add'});
+      if(pan0||pan1)q.cam.animate([{translate:`${(pan0*W0).toFixed(1)}px`},{translate:`${(pan1*W0).toFixed(1)}px`}],{duration:lineDur*1000,easing:'linear',fill:'forwards'})}}
+  const follow=camEff()==='follow'&&S.followZ>0;
+  if(camOn()&&!follow&&(S.camMode==='tiktok'||S.camMode==='subtle'))camEnter(P,U,lineDur);
+  const C={g,P,U,spans,hot:null,th,fast,follow,z:S.followZ,shot:S.camShot||'follow',end:lineDur?lineT+lineDur:0,start:lineT,isTitle:lineT<-1e8};if(follow)camFollowStart(C);
+  if(journey()&&S.canvasMove)canvasArrange(C);
+  if(streamOn()&&S.pathLine)pathArrange(C);
+  return C;
+}
+function retire(c){
+  if(!c)return;
+  if(!c.noCanvas&&c.P&&streamOn()){if(CV.live.length)canvasClear();if(streamKeep(c))return}else if(!c.noCanvas&&ST.live.length)streamClear();
+  if(!c.noCanvas){if(journey()&&c.P){if(canvasKeep(c))return;if(diveMaybe(c))return}else if(CV.live.length)canvasClear()}
+  if(c.bg)return;
+  for(const {scr,exit} of c.P){
+    if(c.fast<1)exit.style.transitionDuration=(.4*c.fast).toFixed(2)+'s';
+    S.exitFast=c.fast<1?Math.max(.35,c.fast*.8):1;
+    const ms=inScreen(scr,()=>(THEMES[c.th]||THEMES.slam).out(exit,scr));if(ms)c.exitMs=Math.max(c.exitMs||0,ms);
+    if(c.fast<1&&ms){exit.style.transition=`opacity ${(.45*c.fast+.25).toFixed(2)}s ease ${(.1*c.fast).toFixed(2)}s`;exit.style.opacity=0}
+  }
+  setTimeout(()=>{c.g.style.transition='opacity .45s ease';c.g.style.opacity=0;setTimeout(()=>c.g.remove(),500)},Math.max(700,(c.exitMs||0)+60));
+}
+function showLine(i){
+  crumb('L');
+  S.carryFrom=S.cur&&!journey()&&!streamOn()?S.cur.U:null;retire(S.cur);S.cur=null;S.idx=i;
+  let words,times,t0;
+  if(i<0){ if(!S.title)return; words=S.title.split(/\s+/).filter(Boolean); times=words.map(()=>-1e9); t0=-1e9; }
+  else{
+    const L=S.lines[i],next=S.lines[i+1];t0=L.t;
+    // verse = run of lines without a gap >3s or an empty line
+    const gapBefore=i===0||!S.lines[i-1].text||L.t-S.lines[i-1].t>Math.max(3,(L.t-S.lines[i-1].t)*0+3.2);
+    const gapAfter=!next||!next.text||next.t-L.t>4.5;
+    let st=i;while(st>0&&S.lines[st-1].text&&S.lines[st].t-S.lines[st-1].t<=3.2)st--;
+    S.lineCtx={first:gapBefore&&!gapAfter,last:gapAfter&&!gapBefore,k:i-st,dur:next?next.t-L.t:0,chorus:!!L.chorus,rep:L.rep||0,adlib:L.adlib||null,adlibOnly:!!L.adlibOnly,text:L.text};
+    if(!L.text){S.region=null;showBreak(t0);return}
+    if(S.choreo&&L.sec){const k0=S.sec&&(S.sec.type+S.sec.num),k1=L.sec.type+L.sec.num;if(k0!==k1)sectionChange(L.sec);else S.sec=L.sec;S.region=regionRect()}
+    else{S.sec=null;S.region=null}
+    words=tokenize(L.text);
+    times=(L.wt&&L.wt.length===words.length)?L.wt:wordTimes(words,t0,next?next.t:t0+5);
+  }
+  if(i<0){S.lineCtx={first:true,k:0};S.region=null;S.sec=null}
+  S.carryFrom=S.carryFrom||null;
+  // a line repeated straight after itself (or mostly the same words) gets a fresh look instead of words sliding in place
+  if(S.carryFrom&&i>0&&S.lines[i-1]&&S.lines[i-1].text){const k=t=>t.toLowerCase().replace(/[^\p{L}\p{N} ]/gu,'').split(/\s+/).filter(Boolean),
+    a=k(S.lines[i-1].text),b=k(S.lines[i].text||'');const sh=b.filter(w=>a.includes(w)).length;if(b.length&&sh/b.length>.6)S.carryFrom=null}
+  S.cur=build(words,times,t0,i>=0&&S.lines[i+1]?S.lines[i+1].t-t0:0);S.carryFrom=null;
+  if(i>=0&&S.lineCtx.adlib)addAdlib(S.cur,S.lineCtx.adlib,t0);
+}
+// instrumental break: song title + artist, calm and centred, breathing with the light
+function showBreak(t0){
+  const words=[S.title||'♪',S.artist||''].filter(Boolean);S.lineCtx={k:0};
+  const units=inScreen(S.scene,()=>{const f='f-serif',m=measure(words[0],f),fs=Math.min(100*W*.5/m.w,H*.16),th=m.h*fs/100;
+    const us=[{ids:[0],font:f,fs,x:W/2,y:H*.48,r:0,mods:'ghost',op:.7,from:{x:W/2,y:H*.5,r:0,s:1}}];
+    if(words[1]){const mf=Math.min(H*.03,100*W*.4/measure(words[1],'f-mono').w);us.push({ids:[1],font:'f-mono',fs:mf,x:W/2,y:H*.48+th/2+mf*1.6,r:0,mods:'',op:.6,from:{x:W/2,y:H*.5+th,r:0,s:1}})}
+    return us});
+  const th0=S.theme;S.theme='fade';S.cur=build(words,words.map(()=>-1e9),t0,0,units);S.theme=th0;S.cur.noHot=true;S.cur.isBreak=true;
+}
+// ad-libs: small lowercase side note in a free corner of the scene
+function addAdlib(c,text,t0){
+  if(!c||!c.P[0])return;const sc=S.scene,cam=c.P[0].cam,el=document.createElement('div');
+  const fs=Math.max(14,Math.min(sc.h*.035,sc.w*.5/Math.max(4,text.length)*1.6));
+  el.className='u adlib on';el.textContent='('+text+')';el.style.fontSize=fs+'px';
+  // pick the corner farthest from the main words
+  // corner farthest from every word; skip the bottom-left one when the track card lives there
+  const pts=c.U.filter(u=>!u.el.classList.contains('ghost')).map(u=>u.geo),hud=S.showInfo&&S.hud;
+  const corners=[[.93,.1],[.07,.1],[.93,.9],[.07,.9]].filter(([cx,cy])=>!(hud&&cx<.5&&cy>.5&&Math.abs(S.hud.x+S.hud.w*.05-(sc.x+cx*sc.w))<sc.w*.3&&Math.abs(S.hud.y+S.hud.h*.9-(sc.y+cy*sc.h))<sc.h*.3));
+  let best=corners[0],bd=-1;for(const [cx,cy] of corners){const d=Math.min(...pts.map(g=>Math.hypot(g.x-cx*sc.w,(g.y-cy*sc.h)*1.6)),1e9);if(d>bd){bd=d;best=[cx,cy]}}
+  const x=best[0]*sc.w,y=best[1]*sc.h;
+  el.style.transform=T(x,y,0,1);el.style.transformOrigin=x>sc.w/2?'100% 50%':'0 50%';
+  el.style.translate=x>sc.w/2?'-50% 0':'50% 0';el.style.opacity=0;el.style.transition='opacity .6s .3s';cam.appendChild(el);
+  requestAnimationFrame(()=>el.style.opacity=.55);
+}
+
+/* ---------- mood: song metadata + live energy ---------- */
+S.moodOn=true;S.lfmKey='';S.mood={intensity:.5,dark:.5,bpm:0,tags:[],src:'none'};S.moodNow=.5;
+const TAGW={ // [intensity, darkness] nudges per tag
+  aggressive:[.9,.7],angry:[.85,.75],hardcore:[.9,.6],metal:[.85,.6],'heavy metal':[.9,.6],dubstep:[.9,.5],trap:[.75,.55],drill:[.8,.7],
+  hype:[.85,.35],energetic:[.85,.3],workout:[.85,.35],party:[.8,.15],edm:[.8,.3],'drum and bass':[.85,.45],dnb:[.85,.45],punk:[.85,.5],
+  rap:[.7,.5],'hip-hop':[.65,.45],'hip hop':[.65,.45],rock:[.65,.45],dance:[.75,.2],electronic:[.6,.4],pop:[.55,.25],upbeat:[.75,.15],
+  happy:[.6,.1],'feel good':[.6,.1],uplifting:[.6,.1],summer:[.6,.1],fun:[.65,.1],cheerful:[.6,.05],
+  chill:[.25,.4],chillout:[.25,.4],ambient:[.15,.5],acoustic:[.25,.35],mellow:[.25,.4],'lo-fi':[.25,.45],lofi:[.25,.45],ballad:[.2,.5],
+  sleep:[.1,.45],relax:[.15,.35],relaxing:[.15,.35],soft:[.2,.35],piano:[.2,.45],slow:[.2,.5],folk:[.3,.4],jazz:[.35,.4],soul:[.4,.4],'r&b':[.4,.4],rnb:[.4,.4],
+  sad:[.25,.9],melancholic:[.25,.85],melancholy:[.25,.85],dark:[.55,.9],depressing:[.2,.95],emo:[.6,.8],heartbreak:[.3,.85],gothic:[.5,.9],atmospheric:[.3,.6],love:[.4,.3],romantic:[.3,.3]};
+async function fetchMood(id){
+  const m={intensity:.5,dark:.5,bpm:0,gain:null,tags:[],src:[]};
+  const jobs=[];
+  // Deezer: tempo + loudness (free, no key)
+  jobs.push((async()=>{
+    const q=`artist:"${mainArtist(S.artist)}" track:"${clean(S.title)}"`;
+    const r=await getJSON('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit=6');
+    const c=(r.data||[]).map(x=>({id:x.id,title:x.title,artist:x.artist&&x.artist.name,dur:x.duration})).map(x=>({...x,sc:scoreCand(x)})).sort((a,b)=>b.sc-a.sc)[0];
+    if(!c||c.sc<3)return;const t=await getJSON('https://api.deezer.com/track/'+c.id);
+    if(t.bpm>0)m.bpm=t.bpm;if(typeof t.gain==='number')m.gain=t.gain;m.src.push('deezer');
+  })());
+  // Last.fm: listener mood/genre tags (needs a free API key)
+  if(S.lfmKey)jobs.push((async()=>{
+    const B='https://ws.audioscrobbler.com/2.0/?format=json&autocorrect=1&api_key='+encodeURIComponent(S.lfmKey);
+    let r=await getJSON(B+'&method=track.gettoptags&'+qs({artist:mainArtist(S.artist),track:clean(S.title)}));
+    let tags=(r.toptags&&r.toptags.tag)||[];
+    if(tags.length<3){const a=await getJSON(B+'&method=artist.gettoptags&'+qs({artist:mainArtist(S.artist)}));tags=tags.concat(((a.toptags&&a.toptags.tag)||[]).map(t=>({...t,count:(+t.count||0)*.6})))}
+    m.tags=tags.slice(0,15).map(t=>({name:String(t.name).toLowerCase(),w:Math.max(1,+t.count||1)}));m.src.push('last.fm');
+  })());
+  await Promise.allSettled(jobs);if(id!==S.reqId)return;
+  // combine: tags (weighted by votes), tempo, loudness
+  let iw=0,iv=0,dw=0,dv=0;
+  for(const t of m.tags){const k=TAGW[t.name]||Object.entries(TAGW).find(([n])=>t.name.includes(n))?.[1];if(!k)continue;iv+=k[0]*t.w;iw+=t.w;dv+=k[1]*t.w;dw+=t.w}
+  const parts=[];if(iw)parts.push([iv/iw,2]);
+  if(m.bpm){let b=m.bpm;if(b<75&&iw&&iv/iw>.6)b*=2;parts.push([Math.max(0,Math.min(1,(b-70)/100)),1])}    // half-time hip-hop guard
+  if(m.gain!=null)parts.push([Math.max(0,Math.min(1,(m.gain+14)/10)),.6]);                                   // louder master -> more intense
+  if(parts.length){const tw=parts.reduce((a,p)=>a+p[1],0);m.intensity=parts.reduce((a,p)=>a+p[0]*p[1],0)/tw}
+  if(dw)m.dark=dv/dw;
+  if(!m.src.length&&!S.moodRetried){S.moodRetried=true;setTimeout(()=>{if(id===S.reqId)fetchMood(id)},20000)}   // network blip: try once more
+  const ok=v=>isFinite(v)?Math.max(0,Math.min(1,v)):.5;m.intensity=ok(m.intensity);m.dark=ok(m.dark);
+  m.src=m.src.join('+')||'live audio only';S.mood=m;applyMood();
+}
+function applyMood(){
+  const m=S.mood;S.fontBias=!S.moodOn?null:m.intensity<.38?'calm':m.intensity>.62?'intense':null;
+  if(S.baseAccent)setAccent(moodAccent(S.baseAccent));
+}
+// darker songs -> deeper, cooler accent; brighter songs -> warmer, lighter
+function moodAccent(hsl){
+  if(!S.moodOn||!hsl)return hsl&&`hsl(${hsl[0]},${hsl[1]}%,${hsl[2]}%)`;
+  const d=S.mood.dark-.5;let [h,sat,l]=hsl;
+  if(sat>12){const toward=d>0?225:35;const dh=((toward-h+540)%360)-180;h=(h+dh*Math.abs(d)*.5+360)%360}
+  l=Math.max(42,Math.min(74,l-d*18));sat=Math.max(sat,sat>12?60:sat);
+  return`hsl(${h.toFixed(0)},${sat.toFixed(0)}%,${l.toFixed(0)}%)`;
+}
+// live: song baseline + how loud this section is compared with the song so far
+function updateMoodNow(){
+  const sec=AU.secE??.5,base=S.mood.intensity;
+  const live=Math.max(0,Math.min(1,base+(sec-.5)*.8));
+  S.moodNow=S.moodNow*.97+live*.03;
+}
+
+/* ---------- choreography: each section is a 'scene' ---------- */
+S.choreo=true;S.sec=null;S.region=null;
+const SCENES={
+  verse:{region:n=>n%2?{x:.04,y:.06,w:.64,h:.88}:{x:.32,y:.06,w:.64,h:.88},layouts:['flow','stair','split','column','grid','caps','initial','climb','sandwich','typewriter','quote','corner','tilt'],themes:['fade','rise','wipe','slam','skew','fly'],
+         sat:.55,light:.85,bg:.8,pan:.035,push:.03,kick:.8,chaos:.6,hue:0},
+  pre:   {region:()=>({x:.14,y:.1,w:.72,h:.8}),layouts:['center','stack','zigzag','flow','arc','pyramid','climb','wave','echo','fan','diamond'],themes:['zoom','stretch','pop','iris'],
+         sat:.8,light:1,bg:.95,pan:0,push:.09,kick:1,chaos:.8,hue:0,ramp:true},
+  chorus:{region:()=>({x:0,y:0,w:1,h:1}),layouts:['hero','stack','diag','cross','frame','tower','flow','arc','pyramid','billboard','wave','headline','banners','ransom','bookends'],themes:['collide','slam','gravity','zoom','flip','split'],
+         sat:1.15,light:1.35,bg:1.2,pan:0,push:.05,kick:1.6,chaos:1.2,hue:0,cut:'burst'},
+  bridge:{region:()=>({x:.27,y:.2,w:.46,h:.6}),layouts:['center','hero','flow','column','arc','initial','billboard','mirror','quote','ring','spiral'],themes:['fade','iris','wave','cascade','orbit'],
+         sat:.5,light:.6,bg:.45,pan:.015,push:.06,kick:.5,chaos:.2,hue:-70,cut:'dip'},
+};
+const sceneOf=()=>S.choreo&&S.sec?SCENES[S.sec.type]:null;
+// a sub-rectangle of the scene for this section (keeps the same screen geometry rules)
+function regionRect(){
+  const sc=SCENES[S.sec&&S.sec.type],base=S.scene;if(!S.choreo||!sc||!base)return base;
+  const r=sc.region(S.sec.num||1),out={x:base.x+base.w*r.x,y:base.y+base.h*r.y,w:base.w*r.w,h:base.h*r.h};
+  if(out.w<base.w*.25||out.h<base.h*.25)return base;return out;
+}
+function toHsl(c){let m=/^#?([0-9a-f]{6})$/i.exec(c||''),r,g,b;
+  if(m){const n=parseInt(m[1],16);r=n>>16&255;g=n>>8&255;b=n&255}else{m=/rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)/.exec(c||'');if(!m)return null;r=+m[1];g=+m[2];b=+m[3]}
+  r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn;let h=0,sa=0;
+  if(d){sa=d/(1-Math.abs(2*l-1));h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60}
+  return [Math.round((h+360)%360),Math.max(8,sa*100),Math.min(70,Math.max(45,l*100))]}
+function sectionChange(sec){
+  crumb('SEC');
+  const prev=S.sec;S.sec=sec;const sc=sceneOf();if(!sc)return;
+  // palette for this section, from the album colour
+  const ba=(S.autoAccent!==false&&S.baseAccent)||toHsl(S.manualAccent||'#ff4d6d');
+  if(ba){const [h,sat,l]=ba;
+    const nh=(h+sc.hue+(sec.type==='verse'&&sec.num%2===0?-18:0)+360)%360;
+    setAccent(moodAccent([nh,Math.max(8,Math.min(100,sat*sc.sat)),Math.max(40,Math.min(78,l*(sec.type==='chorus'?1.04:sec.type==='bridge'?.9:1)))]))}
+  // section cuts
+  if(!prev||prev.type!==sec.type||prev.num!==sec.num){
+    const L=$('light');
+    if(sc.cut==='burst'&&S.flashes!==false&&!S.low){S.fxAnim=true;const a=L.animate([{opacity:1},{opacity:+(S.fxBase||.3)}],{duration:1100,easing:'cubic-bezier(.12,.8,.25,1)'});a.onfinish=()=>{S.fxAnim=false;L.style.opacity=S.fxBase||.3};
+      $('bg').animate([{opacity:1},{opacity:+(S.fxBg||.6)}],{duration:900,easing:'ease-out'})}
+    if(sc.cut==='dip'&&!S.low){$('fg').animate([{opacity:1},{opacity:.15,offset:.35},{opacity:1}],{duration:1400,easing:'ease-in-out'});$('bg').animate([{opacity:+(S.fxBg||.6)},{opacity:.1,offset:.4},{opacity:+(S.fxBg||.6)}],{duration:1800})}
+  }
+}
+
+// release build: remove the crash recorder's stored log from older test builds
+try{localStorage.removeItem('kl:crumbs');localStorage.removeItem('kl:lastcrash')}catch(e){}
+function crumb(){}
+
+/* ---------- idle clock ---------- */
+S.clockOn=true;S.clock24=true;S.idleSince=performance.now();
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function clockWords(){
+  const d=new Date();let h=d.getHours(),suf='';
+  if(!S.clock24){suf=h<12?' AM':' PM';h=h%12||12}
+  const time=(S.clock24?String(h).padStart(2,'0'):String(h))+':'+String(d.getMinutes()).padStart(2,'0')+suf;
+  return{key:time+d.getDate(),words:[time,DAYS[d.getDay()],`${d.getDate()} ${MONTHS[d.getMonth()]}`]};
+}
+function compClock(words){
+  const style=pick(['center','left','stack']),tf=pick(['f-cond','f-black','f-impact']);
+  const m=measure(words[0],tf),fs=Math.min(100*W*.6/m.w,100*H*.58/m.h),th=m.h*fs/100,tw=m.w*fs/100;
+  const dfs=Math.min(H*.11,100*W*.4/measure(words[1],'f-serif').w),mfs=Math.min(H*.045,100*W*.5/measure(words[2],'f-mono').w);
+  const cx=style==='left'?W*.08+tw/2:W/2,ax=style==='left'?W*.08:null;
+  const at=(f,txt,mul)=>ax==null?cx:ax+measure(txt,f).w*mul/200;
+  const us=[
+    {ids:[0],font:tf,fs,x:cx,y:H*.52,r:style==='stack'?pick([-4,4]):0,mods:pick(['','','outline'])},
+    {ids:[1],font:'f-serif',fs:dfs,x:at('f-serif',words[1],dfs),y:H*.52-th/2-dfs*.55,r:0,mods:'acc'},
+    {ids:[2],font:'f-mono',fs:mfs,x:at('f-mono',words[2],mfs),y:H*.52+th/2+mfs*1.4,r:0,mods:''},
+  ];
+  us.forEach(u=>u.from={x:u.x,y:u.y,r:u.r,s:1});
+  return declutter(us,words);
+}
+function showClock(){
+  const c=clockWords();if(c.key===S.clockKey&&S.cur)return;
+  S.clockKey=c.key;retire(S.cur);
+  const units=inScreen(S.scene,()=>compClock(c.words));
+  S.cur=build(c.words,c.words.map(()=>-1e9),-1e9,0,units);S.cur.noHot=true;
+}
+
+/* ---------- lyrics ---------- */
+const CREDIT=/^(作词|作曲|编曲|制作|监制|混音|母带|和声|吉他|贝斯|鼓|录音|弦乐|出品|发行|producer|composer|lyricist|lyrics by|written by|arrange|mix|master)[^:：]{0,14}[:：]/i;
+function parseLRC(txt){
+  const out=[];
+  for(const raw of txt.split(/\r?\n/)){
+    const tags=[...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];if(!tags.length)continue;
+    let body=raw.replace(/\[[^\]]*\]/g,''),wt=null;
+    if(/<\d+:\d+(?:\.\d+)?>/.test(body)){            // enhanced LRC: real per-word timing
+      wt=[];const ws=[];
+      body.replace(/<(\d+):(\d+(?:\.\d+)?)>([^<]*)/g,(_,m,sec,w)=>{for(const x of w.trim().split(/\s+/).filter(Boolean)){ws.push(x);wt.push(+m*60+ +sec)}return''});
+      body=ws.join(' ');if(!ws.length)wt=null;
+    }
+    const text=body.trim();if(CREDIT.test(text))continue;
+    for(const t of tags)out.push({t:+t[1]*60+ +t[2],text,wt});
+  }
+  return out.sort((a,b)=>a.t-b.t);
+}
+function prepLines(lines){
+  const out=[];
+  const src=[];for(const L0 of lines){const pv=src[src.length-1];
+    if(pv&&L0.text&&pv.text&&!pv.inst&&L0.t-pv.t<.35){pv.text=pv.text+' '+L0.text;pv.wt=(pv.wt&&L0.wt)?pv.wt.concat(L0.wt):null;continue}
+    src.push({...L0})}
+  lines=src;
+  for(const L0 of lines){
+    let L={...L0};
+    // ad-libs: "(text)" -> side note
+    const ad=[...(L.text||'').matchAll(/\(([^)]+)\)/g)].map(m=>m[1].trim()).filter(Boolean);
+    if(ad.length){const rest=L.text.replace(/\s*\([^)]*\)\s*/g,' ').trim();
+      if(rest){L.text=rest;L.adlib=ad.join(' · ');if(L.wt)L.wt=null}else{L.text=ad.join(' ');L.adlibOnly=true}}
+    // very long lines -> two beats
+    const w=tokenize(L.text||'');
+    if(w.length>14){const h=Math.ceil(w.length/2),n=lines[lines.indexOf(L0)+1],end=n?n.t:L.t+6;
+      const tMid=L.wt&&L.wt.length===w.length?L.wt[h]:L.t+(end-L.t)*(w.slice(0,h).join(' ').length/Math.max(1,w.join(' ').length));
+      out.push({...L,text:w.slice(0,h).join(CJK.test(L.text)?'':' '),wt:L.wt&&L.wt.length===w.length?L.wt.slice(0,h):null});
+      out.push({...L,t:tMid,text:w.slice(h).join(CJK.test(L.text)?'':' '),wt:L.wt&&L.wt.length===w.length?L.wt.slice(h):null,adlib:null});continue}
+    out.push(L);
+  }
+  // chorus = a line that appears more than once
+  const key=t=>(t||'').toLowerCase().replace(/[^\p{L}\p{N} ]/gu,'').trim(),cnt={};
+  for(const L of out)if(L.text)cnt[key(L.text)]=(cnt[key(L.text)]||0)+1;
+  for(const L of out)L.chorus=!!(L.text&&cnt[key(L.text)]>1&&tokenize(L.text).length>=2);
+  {const seen={};for(const L of out)if(L.text){const k=key(L.text);L.rep=seen[k]||0;seen[k]=L.rep+1}}
+  markSections(out);
+  // long instrumental gaps -> a designed break instead of a stale line
+  const fin=[];
+  out.forEach((L,i)=>{fin.push(L);const n=out[i+1];if(L.text&&n&&n.t-L.t>9){const said=Math.min(6,tokenize(L.text).length*.45+2.5);fin.push({t:L.t+said,text:'',inst:true})}});
+  return fin;
+}
+// split the song into blocks (gaps / breaks) and label them: verse, pre-chorus, chorus, bridge
+function markSections(lines){
+  const blocks=[];let cur=null;
+  lines.forEach((L,i)=>{
+    if(!L.text){cur=null;return}
+    const prev=lines[i-1];
+    if(!cur||!prev||!prev.text||L.t-prev.t>3.6){cur={lines:[],start:L.t};blocks.push(cur)}
+    cur.lines.push(L);cur.end=L.t;
+  });
+  const T=lines.length?lines[lines.length-1].t:1;
+  blocks.forEach(b=>{const c=b.lines.filter(l=>l.chorus).length;b.type=c/b.lines.length>=.5?'chorus':'verse'});
+  // pre-chorus: a repeating block that leads straight into another repeating block (the real chorus)...
+  blocks.forEach((b,i)=>{const n=blocks[i+1];if(b.type==='chorus'&&n&&n.type==='chorus'&&n.start-b.end<7&&b.lines.length<=4)b.type='pre'});
+  // ...or a short non-repeating lead-in right before a chorus
+  blocks.forEach((b,i)=>{const n=blocks[i+1];if(b.type==='verse'&&n&&n.type==='chorus'&&b.lines.length<=3&&i>0)b.type='pre'});
+  // bridge: the last non-chorus block that comes after at least two choruses, late in the song
+  let seen=0;blocks.forEach(b=>{if(b.type==='chorus')seen++;b.after=seen});
+  for(let i=blocks.length-1;i>=0;i--){const b=blocks[i];if(b.type!=='chorus'&&b.after>=2&&b.start>T*.5){b.type='bridge';break}}
+  const num={};blocks.forEach(b=>{num[b.type]=(num[b.type]||0)+1;b.num=num[b.type];
+    b.lines.forEach((L,k)=>{L.sec={type:b.type,num:b.num,i:k,n:b.lines.length,start:b.start,end:b.end}})});
+}
+const clean=s=>s.replace(/\s*[\(\[].*?[\)\]]/g,'').replace(/\s+-\s+.*$/,'').trim();
+const mainArtist=a=>a.split(/,|&|\sfeat\.?\s|\sft\.?\s|\sx\s/i)[0].trim();
+const norm=s=>clean(s||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+function sim(a,b){a=norm(a);b=norm(b);if(!a||!b)return 0;if(a===b)return 1;if(a.includes(b)||b.includes(a))return .8;
+  const A=new Set(a.split(' ')),B=b.split(' ');return .7*B.filter(x=>A.has(x)).length/Math.max(A.size,B.length)}
+function scoreCand(c){let s=sim(c.title,S.title)*3+sim(c.artist,S.artist)*2;
+  if(S.dur&&c.dur){const d=Math.abs(c.dur-S.dur);s+=d<2?1.5:d<5?.8:d<15?0:-1.5}return s}
+const qs=o=>Object.entries(o).filter(([,v])=>v!==''&&v!=null).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+const getJSON=(url,ms=7000)=>Promise.race([fetch(url).then(r=>r.ok?r.json():Promise.reject(r.status)),new Promise((_,r)=>setTimeout(()=>r('timeout'),ms))]);
+
+async function provLrclib(){
+  const out=[],add=x=>{if(x&&x.syncedLyrics)out.push({src:'lrclib',title:x.trackName,artist:x.artistName,dur:x.duration,lrc:x.syncedLyrics})},L='https://lrclib.net/api/';
+  const jobs=[getJSON(L+'search?'+qs({track_name:S.title,artist_name:S.artist})).then(a=>a.forEach(add)),
+              getJSON(L+'search?'+qs({track_name:clean(S.title),artist_name:mainArtist(S.artist)})).then(a=>a.forEach(add)),
+              getJSON(L+'search?'+qs({q:clean(S.title)+' '+mainArtist(S.artist)})).then(a=>a.forEach(add))];
+  if(S.album&&S.dur)jobs.push(getJSON(L+'get?'+qs({track_name:S.title,artist_name:S.artist,album_name:S.album,duration:Math.round(S.dur)})).then(add));
+  await Promise.allSettled(jobs);return out;
+}
+async function provNetease(){
+  const r=await getJSON('https://music.163.com/api/search/get?'+qs({s:clean(S.title)+' '+mainArtist(S.artist),type:1,limit:6}));
+  const songs=((r.result&&r.result.songs)||[]).map(x=>({id:x.id,title:x.name,artist:(x.artists||[]).map(a=>a.name).join(', '),dur:(x.duration||0)/1000}))
+    .sort((a,b)=>scoreCand(b)-scoreCand(a)).slice(0,2),out=[];
+  for(const x of songs){try{
+    const l=await getJSON('https://music.163.com/api/song/lyric/v1?'+qs({id:x.id,lv:1,kv:1,tv:-1,yv:1,rv:1}));
+    const y=l.yrc&&l.yrc.lyric;
+    if(y&&/^\[\d+,\d+\]/m.test(y)){             // word-timed: [lineStartMs,durMs](wordStartMs,durMs,0)word...
+      const lrc=y.split('\n').map(L=>{const m=L.match(/^\[(\d+),(\d+)\](.*)$/);if(!m)return'';
+        const ws=[...m[3].matchAll(/\((\d+),(\d+),\d+\)([^(]*)/g)];
+        let words=[],cur='',ct=null;
+        for(const w of ws){const t=+w[1]/1000,txt=w[3];
+          for(const piece of txt.split(/(\s+)/)){if(!piece)continue;if(/^\s+$/.test(piece)){if(cur){words.push(`<${fmtT(ct)}>${cur}`);cur='';ct=null}continue}if(ct==null)ct=t;cur+=piece}}
+        if(cur)words.push(`<${fmtT(ct)}>${cur}`);
+        return`[${fmtT(+m[1]/1000)}]${words.join(' ')}`}).filter(Boolean).join('\n');
+      if(lrc)out.push({...x,src:'netease',lrc});continue}
+    const lr=l.lrc&&l.lrc.lyric;
+    if(lr&&/\[\d+:\d+/.test(lr))out.push({...x,src:'netease',lrc:lr})}catch(e){}}
+  return out;
+}
+// Musixmatch (desktop API) — line sync + word-level richsync when available
+async function mxmToken(){
+  try{const t=JSON.parse(localStorage.getItem('kl:mxm')||'null');if(t&&Date.now()-t.at<6*3600e3)return t.tok}catch(e){}
+  const r=await getJSON('https://apic-desktop.musixmatch.com/ws/1.1/token.get?app_id=web-desktop-app-v1.0&t='+Date.now());
+  const tok=r&&r.message&&r.message.body&&r.message.body.user_token;
+  if(!tok||/UpgradeOnly/i.test(tok))throw 'mxm token';
+  try{localStorage.setItem('kl:mxm',JSON.stringify({tok,at:Date.now()}))}catch(e){}return tok;
+}
+const fmtT=t=>{const m=Math.floor(t/60),s=(t-m*60).toFixed(2).padStart(5,'0');return`${String(m).padStart(2,'0')}:${s}`};
+async function provMusixmatch(){
+  const tok=await mxmToken(),B='https://apic-desktop.musixmatch.com/ws/1.1/';
+  const r=await getJSON(B+'macro.subtitles.get?'+qs({format:'json',namespace:'lyrics_richsynched',subtitle_format:'mxm',app_id:'web-desktop-app-v1.0',
+    q_artist:mainArtist(S.artist),q_track:clean(S.title),q_album:S.album,q_duration:S.dur?Math.round(S.dur):'',usertoken:tok}),9000);
+  const mc=r.message.body.macro_calls,tr=mc['matcher.track.get'].message.body.track;
+  const base={src:'musixmatch',title:tr.track_name,artist:tr.artist_name,dur:tr.track_length};
+  let lrc='';
+  // word-level first
+  if(tr.has_richsync){try{
+    const rs=await getJSON(B+'track.richsync.get?'+qs({app_id:'web-desktop-app-v1.0',commontrack_id:tr.commontrack_id,usertoken:tok}),9000);
+    const body=JSON.parse(rs.message.body.richsync.richsync_body);
+    lrc=body.map(L=>{const ws=[];let cur='',ct=null;
+      for(const ch of L.l){if(ch.c===' '){if(cur){ws.push(`<${fmtT(L.ts+ct)}>${cur}`);cur='';ct=null}continue}if(ct==null)ct=ch.o;cur+=ch.c}
+      if(cur)ws.push(`<${fmtT(L.ts+ct)}>${cur}`);return`[${fmtT(L.ts)}]${ws.join(' ')}`}).join('\n');
+  }catch(e){}}
+  if(!lrc){const sl=mc['track.subtitles.get'].message.body.subtitle_list;if(sl&&sl.length){
+    lrc=JSON.parse(sl[0].subtitle.subtitle_body).map(x=>`[${fmtT(x.time.total)}]${x.text}`).join('\n')}}
+  return lrc?[{...base,lrc}]:[];
+}
+const PROVIDERS={lrclib:provLrclib,netease:provNetease};   // musixmatch blocks non-app clients with a captcha
+S.provider='auto';S.provLog='';
+(function purgeLyricCache(){try{for(let k=localStorage.length-1;k>=0;k--){const n=localStorage.key(k);if(n&&(n.startsWith('kl:ly:')||n==='kl:lyix'))localStorage.removeItem(n)}}catch(e){}})();
+async function fetchLyrics(){
+  const id=++S.reqId,key=S.artist+'|'+S.title;S.lines=[];S.idx=-99;S.src='';resetSync(key);
+  status('finding lyrics…');
+  await new Promise(r=>setTimeout(r,800));if(id!==S.reqId)return;   // give the duration a moment to arrive
+  const names=S.provider!=='auto'&&PROVIDERS[S.provider]?[S.provider]:Object.keys(PROVIDERS);
+  const res=await Promise.allSettled(names.map(n=>PROVIDERS[n]()));if(id!==S.reqId)return;
+  S.provLog=names.map((n,i)=>n+(res[i].status==='fulfilled'?' '+res[i].value.length:' ✗'+String(res[i].reason).slice(0,14))).join('  ');
+  const cands=res.flatMap(r=>r.status==='fulfilled'?r.value:[]).map(c=>({...c,score:scoreCand(c)}))
+    .map(c=>({...c,word:/<\d+:\d+/.test(c.lrc)}))
+    .filter(c=>c.score>3.2).sort((a,b)=>(Math.round(b.score*2)-Math.round(a.score*2))||(b.word-a.word)||(a.src==='lrclib'?-1:1));
+  try{DG.begin(key,cands,S.dur)}catch(e){}
+  for(const c of cands){const lines=parseLRC(c.lrc);if(lines.length>2){
+    S.src=c.src+(lines.some(l=>l.wt)?' · word-synced':'');S.lines=prepLines(lines);S.idx=-99;status(S.src);
+    try{DG.chose(c,lines)}catch(e){}return}}
+  try{DG.chose(null,null)}catch(e){}S.noneAt=performance.now();status('no synced lyrics');
+}
+
+/* ---------- sync diagnostics (temporary test build): records how well lyrics line up, shown with "Show screens" ---------- */
+const DG={cur:null,on:[],prev:0,avg:0,last:-9,songs:[],evs:[],
+  ev(type,info){this.evs.push([performance.now(),type,info]);if(this.evs.length>40)this.evs.shift()},
+  load(){try{this.songs=JSON.parse(localStorage.getItem('kl:diag')||'[]')||[]}catch(e){this.songs=[]}},
+  save(){try{localStorage.setItem('kl:diag',JSON.stringify(this.songs.slice(-40)))}catch(e){}},
+  begin(key,cands,durAtFetch){this.end();this.on=[];
+    this.cur={at:Date.now(),title:(S.title||'').slice(0,30),artist:(S.artist||'').slice(0,22),fd:+(durAtFetch||0).toFixed(1),
+      cands:cands.slice(0,5).map(c=>[c.src[0],+(+c.dur||0).toFixed(0),+c.score.toFixed(1),c.word?1:0]),nC:cands.length,
+      tl0:S.tlCount||0,st0:S.tlStale||0,sn0:S.snaps||0,gaps:[],lastTL:null,tcl:S.tcLat||0};S.tcLat=0},
+  chose(c,lines){const d=this.cur;if(!d)return;if(!c){d.src='none';this.save();return}
+    d.src=c.src;d.word=lines.some(l=>l.wt)?1:0;d.ld=+(+c.dur||0).toFixed(1);d.n=lines.filter(l=>l.text).length;
+    d.first=+((lines.find(l=>l.text)||{t:0}).t).toFixed(1)},
+  tl(){const d=this.cur;if(!d)return;if(!S.pendTrack&&S.dur&&(S.title||'').slice(0,30)===d.title)d.sdur=+S.dur.toFixed(1);const t=performance.now();if(d.lastTL!=null){const g=t-d.lastTL;if(g<20000)d.gaps.push(Math.round(g))}d.lastTL=t;if(d.gaps.length>400)d.gaps.shift()},
+  audio(a){if(!S.playing)return;let m=0;for(let k=8;k<40;k++)m+=a[k]+a[64+k];
+    const f=Math.max(0,m-this.prev);this.prev=m;this.avg=this.avg*.97+f*.03;const t=rawPos();
+    this.lvl=(this.lvl||m)*.995+m*.005;if(f>this.avg*2.2&&f>this.lvl*.04+1e-5&&t-this.last>.15){this.on.push([t,Math.min(4,f/Math.max(this.avg,1e-3))]);this.last=t;if(this.on.length>2500)this.on.shift()}},
+  // per line: nearest strong vocal onset to the line's timestamp (onset - line time; + means the singer comes AFTER the lyric time)
+  analyse(){const d=this.cur;if(!d||!S.lines.length)return;const p=rawPos(),ds=[];
+    for(const L of S.lines){if(!L.text||L.t+1.6>p)continue;let best=null;
+      for(const [t,w] of this.on){const x=t-L.t;if(x<-1.5||x>1.5||w<1.4)continue;const sc=Math.abs(x)-w*.05;if(!best||sc<best[1])best=[x,sc]}
+      if(best)ds.push([L.t,best[0]])}
+    d.lines=ds.length;if(ds.length<4)return;
+    const xs=ds.map(v=>v[1]).sort((a,b)=>a-b),q=f=>xs[Math.min(xs.length-1,Math.floor(f*xs.length))];
+    d.med=+q(.5).toFixed(2);d.iqr=+(q(.75)-q(.25)).toFixed(2);d.close=+(xs.filter(x=>Math.abs(x-d.med)<.25).length/xs.length).toFixed(2);
+    // drift: does the gap grow through the song (wrong version / tempo) ?
+    const n=ds.length,mt=ds.reduce((a,v)=>a+v[0],0)/n,md=ds.reduce((a,v)=>a+v[1],0)/n;let num=0,den=0;for(const [t,x] of ds){num+=(t-mt)*(x-md);den+=(t-mt)**2}
+    d.drift=den?+(num/den*60).toFixed(2):0;   // seconds per minute
+    // halves: early part vs late part median (clearer sign of a shifted version)
+    const h=(a,b)=>{const v=ds.filter(z=>z[0]>=a&&z[0]<b).map(z=>z[1]).sort((x,y)=>x-y);return v.length>2?+v[Math.floor(v.length/2)].toFixed(2):null};
+    const mid=ds[Math.floor(n/2)][0];d.h1=h(-1,mid);d.h2=h(mid,1e9)},
+  end(){const d=this.cur;if(!d)return;this.analyse();
+    const g=d.gaps.slice().sort((a,b)=>a-b);d.rep=g.length?g[Math.floor(g.length/2)]:0;d.rep90=g.length?g[Math.floor(g.length*.9)]:0;d.nRep=g.length+1;
+    d.stale=(S.tlStale||0)-d.st0;d.seeks=(S.snaps||0)-d.sn0;d.corr=+(S.kCur||0).toFixed(2);d.spread=+(S.kSpread||0).toFixed(2);
+    d.dur=d.sdur||+(S.dur||0).toFixed(1);d.nudge=+(SY.nudge||0).toFixed(2);d.off=S.offset||0;d.secs=Math.round((Date.now()-d.at)/1000);
+    delete d.gaps;delete d.lastTL;delete d.tl0;delete d.st0;delete d.sn0;
+    if(d.secs>20)this.songs.push(d);this.cur=null;this.save()},
+  report(){const rows=this.songs.slice(-18).concat(this.cur?[{...this.cur,live:1}]:[]),f=(v,w)=>String(v??'-').slice(0,w).padEnd(w);
+    let o='SYNC DIAGNOSTICS  (onset-line: + = singer later than lyric)   audio frames '+(S.audioN||0)+'  level '+(AU.raw||0).toFixed(3)+'\n';
+    o+=f('song',24)+f('src',4)+f('w',2)+f('spot',6)+f('lyr',6)+f('med',6)+f('iqr',5)+f('ok%',5)+f('drift',6)+f('1st/2nd',12)+f('rep ms',11)+f('corr',6)+f('nudge',6)+f('title',6)+'cands\n';
+    for(const d of rows){if(d.live)this.analyse();
+      o+=f((d.live?'>':'')+d.title,24)+f((d.src||'?').slice(0,3),4)+f(d.word,2)+f(d.dur||d.fd,6)+f(d.ld,6)+f(d.med,6)+f(d.iqr,5)+f(d.close!=null?Math.round(d.close*100):'-',5)+f(d.drift,6)
+        +f((d.h1??'-')+'/'+(d.h2??'-'),12)+f((d.rep||'-')+'/'+(d.rep90||'-'),11)+f(d.corr,6)+f(d.nudge,6)+f(d.tcl?(d.tcl/1000).toFixed(1)+'s':'-',6)+(d.cands||[]).map(c=>c.join(':')).join(' ')+'\n'}
+    // media events from Wallpaper Engine, newest last: shows how late the title comes after a song change
+    o+='\nMEDIA EVENTS (seconds before now)\n';const nowT=performance.now();
+    o+=this.evs.slice(-16).map(([t,ty,i])=>((nowT-t)/1000).toFixed(1).padStart(6)+'s  '+ty.padEnd(6)+i).join('\n');
+    return o}};
+DG.load();
+window.addEventListener('beforeunload',()=>{try{DG.end()}catch(e){}});
+/* ---------- auto-sync: line starts vs vocal onsets in the audio ---------- */
+function resetSync(key){SY.key=key;SY.on=[];SY.auto=0;SY.last=-1;try{SY.nudge=+(localStorage.getItem('kl:'+key)||0)}catch(e){SY.nudge=0}updNudge()}
+function saveNudge(){try{SY.nudge?localStorage.setItem('kl:'+SY.key,SY.nudge.toFixed(2)):localStorage.removeItem('kl:'+SY.key)}catch(e){}}
+function updNudge(){const v=SY.nudge;$('nv').textContent=(v>0?'+':'')+v.toFixed(2)+'s'}
+const fmt=v=>(v>=0?'+':'')+v.toFixed(2)+'s';
+function flash(m){status(m);SY.flashT=performance.now()}
+const AU={low:0,mid:0,high:0,tot:0,lowA:.3,highA:.3,totA:.3,totSlow:.3,flat:0,lastKick:0,lastHat:0,lastDrop:0,dist:0,vocal:0,ev:{kick:0,hat:0,drop:0},cnt:{kick:0,hat:0,drop:0}};
+S.react=.6;S.flashes=true;
+function onAudio(a){
+  // clean the frame instead of dropping it (a strict check here silently threw away real audio on some PCs)
+  if(!a||!(a.length>=1))return;{const n=a.length,c=new Array(128);for(let k=0;k<128;k++){const v=+a[n>=128?k:k%n];c[k]=v>0&&v<50?v:0}a=c}
+  S.audioN=(S.audioN||0)+1;S.audioT=performance.now();
+  {let q=0;for(let k=0;k<128;k++)q+=a[k];if(q>.002)AU.soundT2=S.audioT}
+  let s=0;for(let k=0;k<5;k++)s+=a[k]+a[64+k];S.beat=Math.min(1,s/10*1.6);
+  // ---- bands (WE gives 64 bins per channel, low -> high) ----
+  const band=(lo,hi)=>{let v=0;for(let k=lo;k<hi;k++)v+=a[k]+a[64+k];return v/((hi-lo)*2)};
+  const rl=band(0,5),rm=band(8,30),rh=band(36,63),rt=band(0,63),now=performance.now();
+  // ---- automatic gain: WE's levels depend on system volume, so normalise each band to its recent peak ----
+  const P=AU.pk||(AU.pk=(()=>{try{const v=JSON.parse(localStorage.getItem('kl:agc'));if(v&&v.t>0)return v}catch(e){}return{l:.001,m:.001,h:.001,t:.001}})());
+  const dk=S.playing?1:0;   // don't forget the levels while paused / between songs
+  P.l=Math.max(P.l*(1-.004*dk),rl);P.m=Math.max(P.m*(1-.004*dk),rm);P.h=Math.max(P.h*(1-.004*dk),rh);P.t=Math.max(P.t*(1-.002*dk),rt);
+  if(S.playing&&now-(AU.savedAt||0)>15000){AU.savedAt=now;try{localStorage.setItem('kl:agc',JSON.stringify(P))}catch(e){}}
+  const quiet=P.t<.0015;                                     // effectively silence: don't amplify noise
+  const low=quiet?0:rl/Math.max(P.l,.0015),mid=quiet?0:rm/Math.max(P.m,.0015),high=quiet?0:rh/Math.max(P.h,.0015),tot=quiet?0:rt/Math.max(P.t,.0015);
+  AU.low=low;AU.mid=mid;AU.high=high;AU.tot=tot;AU.raw=rt;
+  // spectral flatness (scale-free), compared with this song's own average
+  let lg=0,ar=0,n=0;const eps=Math.max(P.t*.02,1e-5);for(let k=4;k<60;k++){const v=(a[k]+a[64+k])/2+eps;lg+=Math.log(v);ar+=v;n++}
+  const flat=Math.exp(lg/n)/(ar/n);AU.flat=AU.flat*.8+flat*.2;AU.flatA=(AU.flatA??flat)*.995+flat*.005;
+  // ---- onsets (normalised 0..1) with adaptive thresholds + cooldowns ----
+  if(low>AU.lowA*1.3+.08&&low>.45&&now-AU.lastKick>160){AU.ev.kick=Math.min(1,(low-AU.lowA)*1.8);AU.lastKick=now;AU.cnt.kick++}
+  if(high>AU.highA*1.4+.06&&high>.35&&now-AU.lastHat>110){AU.ev.hat=1;AU.lastHat=now;AU.cnt.hat++}
+  if(tot>AU.totSlow*1.9&&AU.totSlow<.4&&tot>.7&&now-AU.lastDrop>4000){AU.ev.drop=1;AU.lastDrop=now;AU.cnt.drop++;CAM.dropPending=true}
+  AU.lowA=AU.lowA*.9+low*.1;AU.highA=AU.highA*.85+high*.15;AU.totSlow=AU.totSlow*.985+tot*.015;
+  // heavy/distorted: loud AND noisier than this song usually is
+  AU.dist=AU.dist*.9+((AU.flat>AU.flatA+.08&&tot>.55)?.1:0);
+  // vocal presence: mids standing out
+  AU.vocal=AU.vocal*.92+Math.min(1,mid/Math.max(.15,(low+high)*.6))*.08;
+  // section energy (~3s) relative to the song's running average
+  if(S.playing){AU.e3=(AU.e3??tot)*.985+tot*.015;AU.eSong=(AU.eSong??tot)*.999+tot*.001;AU.secE=Math.max(0,Math.min(1,.5+(AU.e3-AU.eSong)*2.2))}
+  try{DG.audio(a)}catch(e){}
+  if(!SY.enabled||!S.playing||!S.lines.length)return;
+  let m=0;for(let k=8;k<40;k++)m+=a[k]+a[64+k];          // mid bands, where vocals mostly live
+  const f=Math.max(0,m-SY.prev);SY.prev=m;SY.avg=SY.avg*.97+f*.03;
+  const t=rawPos();
+  if(f>SY.avg*2.2&&f>.02&&t-SY.last>.15){SY.on.push({t,s:Math.min(4,f/Math.max(SY.avg,1e-3))});SY.last=t;if(SY.on.length>800)SY.on.shift()}
+}
+function calcSync(){
+  const p=rawPos(),B=81,h=new Float32Array(B);let n=0;
+  for(let i=0;i<S.lines.length;i++){
+    const L=S.lines[i];if(L.t+2.2>p)break;if(!L.text)continue;
+    const w=(i&&L.t-S.lines[i-1].t>2)?2:1;let any=false;    // lines after a gap are the clearest cues
+    for(const o of SY.on){const d=L.t-o.t;if(d<-2||d>2)continue;any=true;h[Math.round((d+2)/.05)]+=o.s*w}
+    if(any)n++;
+  }
+  if(n<6)return;
+  let best=0,bi=0,sum=0;
+  for(let b=0;b<B;b++){const v=h[b]*.5+(h[b-1]||0)*.25+(h[b+1]||0)*.25;sum+=v;if(v>best){best=v;bi=b}}
+  if(!sum||best/(sum/B)<3.2)return;                         // not confident -> leave it alone
+  const target=Math.max(-.6,Math.min(.6,bi*.05-2+.12-S.offset/1000));
+  if(Math.abs(target-SY.auto)>.06){SY.auto+=(target-SY.auto)*.6;flash('auto-sync '+fmt(SY.auto))}
+}
+
+/* ---------- display roles ---------- */
+S.role='main';S.showInfo=true;S.layoutMode='multi';S.debug=false;
+// your desk: portrait on the left, two 3440x1440 stacked on the right (3 = main)
+S.monitors='1440x2560@0,636; 3440x1440@1440,0; 3440x1440@1440,1440:main';
+const ROLE={screen:'screen',main:'main',feed:'ribbon',ribbon:'ribbon',portrait:'ribbon',side:'echo',echo:'echo',off:'off'};
+function parseMonitors(str){
+  return String(str??'').split(/[;\n]/).map(x=>x.trim()).filter(Boolean).map(x=>{
+    const m=x.match(/(\d+)\s*x\s*(\d+)\s*@\s*(-?\d+)\s*,\s*(-?\d+)\s*(?::\s*(\w+))?/i);
+    return m&&{w:+m[1],h:+m[2],x:+m[3],y:+m[4],role:ROLE[(m[5]||'screen').toLowerCase()]||'screen'};
+  }).filter(Boolean);
+}
+function place(el,x,y,w,h){
+  Object.assign(el.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px',display:''});
+  el.style.setProperty('--rw',w+'px');el.style.setProperty('--rh',h+'px');
+}
+function layout(force){
+  const cw=innerWidth,ch=innerHeight;if(cw<200||ch<200)return;
+  const sig=[cw,ch,S.layoutMode,S.monitors,S.role,S.debug,S.showInfo].join('|');
+  if(!force&&sig===S.layoutSig)return;S.layoutSig=sig;
+  const rect={};let mons=[];
+  if(S.layoutMode==='multi')mons=parseMonitors(S.monitors);
+  // configured desk doesn't match this canvas (someone else's screen, or monitors changed) -> treat as a single screen
+  if(mons.length>1){const x0=Math.min(...mons.map(m=>m.x)),y0=Math.min(...mons.map(m=>m.y)),dw=Math.max(...mons.map(m=>m.x+m.w))-x0,dh=Math.max(...mons.map(m=>m.y+m.h))-y0;
+    const ca=cw/ch,da=dw/dh;if(Math.abs(ca-da)/da>.12)mons=[]}
+  if(mons.length){
+    // bounding box of the desk, then fit it to the stretched canvas
+    let x0=Math.min(...mons.map(m=>m.x)),y0=Math.min(...mons.map(m=>m.y)),x1=Math.max(...mons.map(m=>m.x+m.w)),y1=Math.max(...mons.map(m=>m.y+m.h));
+    const k=cw/(x1-x0),deskH=ch/k;
+    // if the canvas is taller/shorter than expected, the screen hanging lowest is offset differently -> slide it to fit
+    if(Math.abs(deskH-(y1-y0))>(y1-y0)*.01){
+      const low=mons.reduce((a,b)=>b.y+b.h>a.y+a.h?b:a);
+      low.y=Math.max(y0,y0+deskH-low.h);y1=y0+deskH;
+    }
+    S.ghost=false;S.mons=mons.map(m=>({...m,px:{x:(m.x-x0)*k,y:(m.y-y0)*k,w:m.w*k,h:m.h*k}}));
+    S.screens=S.mons.filter(m=>m.role!=='off').map(m=>({...m.px,main:m.role==='main'}));
+    if(!S.screens.length)S.screens=[{x:0,y:0,w:cw,h:ch,main:true}];
+    if(!S.screens.some(x=>x.main))S.screens.reduce((a,b)=>b.w*b.h>a.w*a.h?b:a).main=true;
+    rect.main={x:0,y:0,w:cw,h:ch};S.hud=S.screens.find(x=>x.main);S.scene=bestRect(S.screens);
+
+  }else{
+    const full={x:0,y:0,w:cw,h:ch};rect[S.role]=full;
+    S.ghost=S.role==='echo';if(S.ghost)rect.main=full;          // single side screen: ghost type behind the panel
+    S.mons=[{w:cw,h:ch,role:S.role,px:full}];S.screens=[{...full,main:true}];S.hud=full;S.scene=full;
+  }
+  for(const k of ['main','ribbon','echo']){
+    VIS[k]=!!rect[k];
+    if(rect[k])place(R[k],rect[k].x,rect[k].y,rect[k].w,rect[k].h);else R[k].style.display='none';
+  }
+  if(rect.main){W=S.scene.w;H=S.scene.h;place($('hud'),S.hud.x,S.hud.y,S.hud.w,S.hud.h);place($('tickbox'),S.scene.x,S.scene.y,S.scene.w,S.scene.h)}
+  S.lastScreen=null;
+  if(rect.ribbon){RW=rect.ribbon.w;RH=rect.ribbon.h}
+  if(rect.echo){EW=rect.echo.w;EH=rect.echo.h}
+  $('info').style.display=(S.showInfo&&!S.ghost)?'':'none';
+  if(!VIS.main){retire(S.cur);S.cur=null}
+  // outlines to check the screens line up
+  const d=$('dbg');d.style.display=S.debug?'block':'none';d.innerHTML='';
+  if(S.debug)for(const m of S.mons){const e=document.createElement('div');Object.assign(e.style,{left:m.px.x+'px',top:m.px.y+'px',width:m.px.w+'px',height:m.px.h+'px'});
+    e.textContent=`${m.role} · ${m.w}x${m.h} · canvas ${cw}x${ch}`;d.appendChild(e)}
+  if(S.debug&&S.scene){const e=document.createElement('div');e.className='scene';Object.assign(e.style,{left:S.scene.x+'px',top:S.scene.y+'px',width:S.scene.w+'px',height:S.scene.h+'px'});e.textContent='lyrics area';d.appendChild(e)}
+  S.ribFor=null;S.idx=-99;setEcho();S.fxLine=null;
+}
+function applyRole(r){S.role=ROLE[r]||r||'main';layout()}
+// portrait: the whole song as a vertical feed, current line centred
+function buildRibbon(){
+  const rib=$('rib');rib.innerHTML='';S.ribFor=S.lines;S.ribW=RW;S.ribH=RH;
+  const src=S.lines.length?S.lines:[{t:-1e9,text:S.title||''}],gap=RH*.022,els=[];let y=0;
+  src.forEach((L,k)=>{
+    const words=(L.text||'♪').split(/\s+/).filter(Boolean);
+    const font=L.text?pick(['f-cond','f-cond','f-black','f-impact','f-serif']):'f-mono';
+    const m=measure(words.join(' '),font),fs=Math.min(100*RW*.86/m.w,RH*.075),h=m.h*fs/100;
+    const el=document.createElement('div');el.className='rl fut '+font;el.style.fontSize=fs+'px';el.style.top=y+'px';
+    const nx=src[k+1],times=(L.wt&&L.wt.length===words.length)?L.wt:wordTimes(words,L.t,nx?nx.t:L.t+5);
+    const spans=words.map((w,j)=>{if(j)el.appendChild(document.createTextNode(' '));const sp=document.createElement('span');sp.className='ws';sp.textContent=w;el.appendChild(sp);return{el:sp,t:times[j]}});   // the space sits between the words (a trailing space inside an inline-block word is dropped)
+    rib.appendChild(el);els.push({el,font,y:y+h/2,spans});y+=h+gap;
+  });
+  S.rib={els,hot:null};
+}
+function ribSet(i){
+  S.idx=i;if(S.ribFor!==S.lines||S.ribW!==RW||S.ribH!==RH)buildRibbon();
+  const Rb=S.rib;if(!Rb||!Rb.els.length)return;
+  Rb.els.forEach((L,k)=>{L.el.className='rl '+L.font+(k<i?' past':k===i?' cur':' fut')});
+  const c=i<0?Rb.els[0].y-RH*.18:Rb.els[Math.min(i,Rb.els.length-1)].y;
+  $('rib').style.transform=`translateY(${(RH*.45-c).toFixed(1)}px)`;
+}
+function ribTick(p){
+  const Rb=S.rib;if(!Rb||S.idx<0)return;const L=Rb.els[S.idx];if(!L)return;let hot=null;
+  for(const sp of L.spans){const on=p>=sp.t;sp.el.classList.toggle('on',on);if(on)hot=sp}
+  if(hot!==Rb.hot){Rb.hot&&Rb.hot.el.classList.remove('hot');hot&&hot.el.classList.add('hot');Rb.hot=hot}
+}
+// top screen: big now-playing card + next-line preview
+function setEcho(){
+  if(!VIS.echo)return;
+  if(S.thumb)$('eart').src=S.thumb;
+  const t=$('etitle');t.textContent=S.title;const m=measure(S.title||' ','f-cond');
+  t.style.fontSize=Math.min(100*(EW*.48)/m.w,EH*.2)+'px';
+  $('eartist').textContent=S.artist;echoNext(S.idx);
+}
+function echoNext(i){
+  if(!VIS.echo)return;let n='';
+  for(let k=Math.max(i+1,0);k<S.lines.length;k++)if(S.lines[k].text){n=S.lines[k].text;break}
+  const e=$('enext');if(e.dataset.v===n)return;e.dataset.v=n;e.classList.add('swap');
+  setTimeout(()=>{e.textContent=n||'—';e.classList.remove('swap')},250);
+}
+
+/* ---------- colour ---------- */
+function setAccent(c){root.style.setProperty('--accent',c);try{drawLight()}catch(e){}}
+/* the light is a soft glow: drawn once into a small canvas the GPU stretches (as a CSS gradient it was re-painted at full size,
+   up to 4352x4352 on three screens, every time the colour or size changed) */
+const _cx=document.createElement('canvas').getContext('2d');
+function rgbaOf(css,a){_cx.fillStyle='#000';_cx.fillStyle=css;const v=_cx.fillStyle;let r,g,b;
+  if(v[0]==='#'){r=parseInt(v.slice(1,3),16);g=parseInt(v.slice(3,5),16);b=parseInt(v.slice(5,7),16)}else{[r,g,b]=v.match(/[\d.]+/g).map(Number)}
+  return[r|0,g|0,b|0,a]}
+function drawLight(){const L=document.getElementById('light');if(!L||!L.getContext)return;const acc=getComputedStyle(root).getPropertyValue('--accent').trim()||'#fff';
+  if(acc===drawLight.k)return;drawLight.k=acc;const x=L.getContext('2d');x.clearRect(0,0,256,256);
+  const [r,g,b]=rgbaOf(acc,1),c=(rr,gg,bb,a)=>`rgba(${rr},${gg},${bb},${a})`,w=v=>Math.round(v*.85+255*.15);
+  const G=x.createRadialGradient(128,128,0,128,128,128);G.addColorStop(0,c(w(r),w(g),w(b),1));G.addColorStop(.18,c(r,g,b,.7));G.addColorStop(.4,c(r,g,b,.3));G.addColorStop(.68,c(r,g,b,0));
+  x.fillStyle=G;x.fillRect(0,0,256,256)}
+setTimeout(()=>{try{drawLight()}catch(e){}},0);
+function accentFromImage(src){
+  const img=new Image();img.onload=()=>{
+    const c=document.createElement('canvas');c.width=c.height=24;const x=c.getContext('2d');x.drawImage(img,0,0,24,24);
+    const d=x.getImageData(0,0,24,24).data;let best=-1,bh=0,bs=0;
+    for(let i=0;i<d.length;i+=4){const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),s=mx?(mx-mn)/mx:0,score=s*mx;
+      if(score>best){best=score;bs=s;const dd=mx-mn;bh=dd===0?0:mx===r?((g-b)/dd)%6:mx===g?(b-r)/dd+2:(r-g)/dd+4;bh=(bh*60+360)%360}}
+    S.baseAccent=bs<.15?[0,0,94]:[+bh.toFixed(0),Math.max(65,bs*100),64];
+    if(S.autoAccent)setAccent(moodAccent(S.baseAccent));
+  };img.src=src;
+}
+S.bgMode='art';
+function setBgMode(m){S.bgMode=m;const b=$('bg');b.classList.toggle('solid',m==='solid'||m==='anim');b.classList.toggle('custom',m==='color');b.classList.toggle('drift',m==='drift');root.classList.toggle('animbg',m==='anim');if(m==='anim')blobs();if(m==='gradient'&&S.pal)b.style.backgroundImage=gradFromPal(S.pal);else if(m==='art'&&S.artBg)b.style.backgroundImage=S.artBg}
+const gradFromPal=p=>`radial-gradient(120% 140% at 15% 20%,${p[0]} 0%,transparent 60%),radial-gradient(120% 140% at 85% 80%,${p[1]} 0%,transparent 60%),linear-gradient(135deg,${p[2]},#050507)`;
+function softBg(src){
+  const img=new Image();img.onload=()=>{
+    const a=document.createElement('canvas');a.width=a.height=12;const x=a.getContext('2d');
+    x.filter='saturate(1.5)';x.drawImage(img,0,0,12,12);
+    const b=document.createElement('canvas');b.width=64;b.height=Math.max(16,Math.round(64*innerHeight/Math.max(1,innerWidth)));
+    const y=b.getContext('2d');y.imageSmoothingEnabled=true;y.imageSmoothingQuality='high';y.filter='blur(3px)';
+    y.drawImage(a,-6,-6,b.width+12,b.height+12);
+    S.artBg=`url(${b.toDataURL()})`;
+    // 3-colour palette (brightest-saturated, a contrasting one, a dark base) for the gradient background
+    const d=x.getImageData(0,0,12,12).data,px=[];for(let i=0;i<d.length;i+=4)px.push([d[i],d[i+1],d[i+2]]);
+    const sat=c=>{const mx=Math.max(...c),mn=Math.min(...c);return mx?(mx-mn)/mx*mx/255:0};px.sort((a,b)=>sat(b)-sat(a));
+    const c0=px[0],c1=px.find(c=>Math.abs(c[0]-c0[0])+Math.abs(c[1]-c0[1])+Math.abs(c[2]-c0[2])>140)||px[Math.floor(px.length/3)],c2=px[px.length-1];
+    const dim=(c,k)=>`rgb(${c.map(v=>Math.round(v*k)).join(',')})`;S.pal=[dim(c0,.85),dim(c1,.7),dim(c2,.5)];
+    $('bg').style.backgroundImage=S.bgMode==='gradient'?gradFromPal(S.pal):S.artBg;$('bg').classList.add('show');if(S.bgMode==='anim')blobs();
+  };img.src=src;
+}
+/* flowing colours: 4 soft blobs (each a tiny canvas the GPU scales up) drifting on long, out-of-step loops */
+function blobs(){
+  const A=$('anim');if(!A)return;
+  const acc=getComputedStyle(root).getPropertyValue('--accent').trim()||'#888';
+  const cols=(S.pal&&S.pal.length?S.pal.slice(0,3):[acc,acc,acc]).concat([acc]),key=cols.join('|');
+  if(A.dataset.k===key&&A.children.length)return;A.dataset.k=key;
+  if(!A.children.length)for(let i=0;i<4;i++){const c=document.createElement('canvas');c.width=c.height=128;A.appendChild(c);
+    const r=()=>(Math.random()*2-1),p=[0,1,2].map(()=>`translate(${(r()*38).toFixed(1)}vmax,${(r()*26).toFixed(1)}vmax) scale(${(.75+Math.random()*.6).toFixed(2)})`);
+    c.animate([{transform:p[0]},{transform:p[1]},{transform:p[2]},{transform:p[0]}],{duration:38000+i*9000,iterations:Infinity,easing:'ease-in-out',delay:-i*7000})}
+  [...A.children].forEach((c,i)=>{const x=c.getContext('2d');x.clearRect(0,0,128,128);x.fillStyle=cols[i%cols.length];const s=x.fillStyle;
+    const g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,s);g.addColorStop(.55,s.replace(/^#(..)(..)(..)$/,(m,a,b,d)=>`rgba(${parseInt(a,16)},${parseInt(b,16)},${parseInt(d,16)},.35)`));
+    g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,128,128)});
+}
+const wpColor=v=>{const [r,g,b]=v.split(' ').map(n=>Math.round(+n*255));return`rgb(${r},${g},${b})`};
+
+/* ---------- beat / vocal reactive fx ---------- */
+function linePulse(kf,o){const c=S.cur;if(c&&c.P)for(const q of c.P){const bx=q.exit.parentNode;if(bx&&bx.animate)bx.animate(kf,o)}}
+function liveUnits(){const c=S.cur;return c?c.U.filter(u=>u.on):[]}
+// put the light behind the middle of the current line
+function aimLight(){
+  const c=S.cur,L=$('light');if(!c||!S.scene){return}
+  let x=0,y=0,n=0;for(const u of c.U){if(!u.on)continue;const r=u.el.getBoundingClientRect();if(!r.width)continue;x+=r.left+r.width/2;y+=r.top+r.height/2;n++}
+  if(!n)return;x/=n;y/=n;
+  const sz=Math.round(Math.max(S.scene.h*1.7,700));if(sz!==S.lsz){S.lsz=sz;L.style.setProperty('--lsz',sz+'px')}
+  L.style.transform=`translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`;
+}
+// words that act out what they mean
+const WORD_FX=[
+  [/^(fall|falls|falling|fell|drop|drops|dropping|down|sink|sinking|crash|crashing|gravity)$/,'fall'],
+  [/^(rise|rising|rose|up|high|higher|fly|flying|float|floating|sky|heaven|lift|soar)$/,'rise'],
+  [/^(spin|spinning|turn|turning|around|twist|round|roll|rolling|circle|world)$/,'spin'],
+  [/^(shake|shaking|tremble|shiver|scared|nervous|rage|angry|fire|burn|burning|crazy|insane)$/,'shake'],
+  [/^(explode|exploding|boom|bang|blow|blowing|burst|blast|bomb|kaboom|pop)$/,'boom'],
+  [/^(whisper|whispers|quiet|small|little|soft|softly|shh|tiny|silent|silence)$/,'small'],
+  [/^(loud|louder|big|bigger|huge|scream|screaming|shout|giant|massive|everything|forever)$/,'big'],
+  [/^(fade|fading|gone|disappear|vanish|away|lost|goodbye|ghost|empty)$/,'fade'],
+  [/^(stretch|long|longer|slow|slowly|wait|waiting)$/,'stretch'],
+  [/^(heart|love|loving|beat|beating|pulse|alive)$/,'pulse'],
+];
+
+/* ---------- camera: tiktok-edit style moves (short, one at a time, zoom capped) ---------- */
+S.camMode='auto';
+const CAM={pulse:null,move:null,lastPunch:0,lastNudge:0,dropPending:false};
+const camOn=()=>S.camMode&&S.camMode!=='off'&&!S.low&&VIS.main;
+// auto: mostly the Follow canvas; an occasional verse flows as a Stream
+function camEff(){
+  if(S.camMode!=='auto')return S.camMode;
+  const L=S.lines&&S.lines[S.idx];
+  // Stream only now and then: some verses (not every one), never pre-choruses, choruses or bridges
+  if(L&&L.sec)return L.sec.type==='verse'&&hashStr((S.title||'')+'|v'+L.sec.num+'|stream')%100<40?'stream':'follow';
+  // no sections found: pick one for the whole song, livelier songs lean to Follow
+  const h=hashStr((S.title||'')+'|'+(S.artist||'')+'|cam')%100;return h<(S.fontBias==='intense'?85:70)?'follow':'stream';
+}
+const camK=()=>(S.camMode==='subtle'?.45:1)*(.55+.75*(S.react??.6));
+function camCams(){const c=S.cur;return c&&c.P?c.P.map(q=>({cam:q.cam,scr:q.scr})):[]}
+function camEnter(P,U,lineDur){
+  if(!camOn())return;const k=camK(),ctx=S.lineCtx||{},h=hashStr((ctx.text||'')+'|cam|'+(ctx.rep||0)),dir=h&1?1:-1;
+  const moves=['whip','spin','swing','punch','rise','whipV','dutch','punch','whip'];
+  let mv=moves[(h>>>2)%moves.length];
+  if(S.sec&&S.sec.type==='chorus'&&S.sec.i===0)mv='punch';          // chorus opens on a punch-in
+  if(lineDur&&lineDur<1.4)mv=pick(['whip','whipV','rise']);           // fast lines: quick moves only
+  let big=null;for(const u of U)if(u.geo&&!u.el.classList.contains('ghost')&&(!big||u.geo.fs>big.geo.fs))big=u;
+  for(const q of P){const cam=q.cam,W0=q.scr.w,H0=q.scr.h;let kf,o;
+    cam.style.transformOrigin='';
+    if(mv==='whip'){kf=[{transform:`translateX(${dir*W0*.32*k}px) skewX(${-dir*16*k}deg)`},{transform:`translateX(${-dir*W0*.025*k}px) skewX(${dir*2.5*k}deg)`,offset:.62},{transform:'none'}];o={duration:520,easing:'cubic-bezier(.15,.9,.3,1)'}}
+    else if(mv==='whipV'){kf=[{transform:`translateY(${dir*H0*.38*k}px) skewY(${dir*6*k}deg)`},{transform:`translateY(${-dir*H0*.03*k}px)`,offset:.65},{transform:'none'}];o={duration:480,easing:'cubic-bezier(.15,.9,.3,1)'}}
+    else if(mv==='spin'){kf=[{transform:`rotate(${dir*16*k}deg) scale(${1+.12*k})`},{transform:`rotate(${-dir*1.8*k}deg) scale(${1-.02*k})`,offset:.6},{transform:'none'}];o={duration:640,easing:'cubic-bezier(.2,.9,.25,1)'}}
+    else if(mv==='swing'){kf=[{transform:`perspective(1600px) rotateY(${dir*40*k}deg) rotateZ(${-dir*3*k}deg)`},{transform:`perspective(1600px) rotateY(${-dir*7*k}deg)`,offset:.58},{transform:'perspective(1600px) rotateY(0deg)'}];o={duration:780,easing:'cubic-bezier(.2,.85,.3,1)'}}
+    else if(mv==='punch'){if(big)cam.style.transformOrigin=`${big.geo.x}px ${big.geo.y}px`;const z=Math.min(1.3,1+.3*k);
+      kf=[{transform:`scale(${z})`},{transform:`scale(${(z-1)*.88+1})`,offset:.3},{transform:'scale(1)'}];o={duration:Math.min(1100,Math.max(650,(lineDur||1)*380)),easing:'cubic-bezier(.75,0,.2,1)'}}
+    else if(mv==='rise'){kf=[{transform:`translateY(${H0*.2*k}px) scale(${1+.05*k})`},{transform:'none'}];o={duration:560,easing:'cubic-bezier(.05,.9,.1,1)'}}
+    else {kf=[{transform:'rotate(0deg) scale(1)'},{transform:`rotate(${dir*3.2*k}deg) scale(${1+.045*k})`}];o={duration:Math.max(800,(lineDur||2)*1000),easing:'cubic-bezier(.3,0,.2,1)',fill:'forwards'}}
+    try{cam.animate(kf,o)}catch(e){}}
+}
+// beat punch: quick zoom + tilt that snaps back (individual props, so it layers on the entrance move)
+
+// which lines get the camera: by section, never two in a row (except inside a chorus), scaled by the slider
+function camPick(words){
+  const ctx=S.lineCtx||{},sec=S.sec&&S.sec.type,base={verse:.25,pre:.4,chorus:.6,bridge:.3}[sec]??.35,amt=(S.camAmt??50)/50;
+  const want=Math.min(1,base*amt),h=(hashStr(words.join(' ').toLowerCase()+'|cam|'+(ctx.rep||0))%1000)/1000;
+  const prev=S.lastCamLine===S.idx-1&&sec!=='chorus';
+  const ok=!prev&&h<want;if(ok)S.lastCamLine=S.idx;return ok;
+}
+// follow cam: smooth, design-style camera. It only glides (no tilts, no shakes, no zoom-ins):
+// glide to each word, drift gently on held notes, pull back to reveal the line, travel to the next line
+const EASE='cubic-bezier(.65,0,.35,1)',EASE_OUT='cubic-bezier(.22,1,.36,1)';
+function camCur(cam,prop){const v=getComputedStyle(cam)[prop];return v&&v!=='none'?v:(prop==='scale'?'1':'0px 0px')}
+function camAnim(c,cam,kf,opt){
+  if(c.fa){try{c.fa.commitStyles()}catch(e){}c.fa.cancel()}
+  const a=cam.animate(kf,Object.assign({fill:'forwards'},opt));c.fa=a;
+  a.onfinish=()=>{try{a.commitStyles()}catch(e){}a.cancel();if(c.fa===a){c.fa=null;if(a.next)a.next()}};return a;
+}
+function camFollowTo(c,x,y,instant,hold,gap){
+  for(const q of c.P){const cam=q.cam,tx=q.scr.w/2-x,ty=q.scr.h/2-y,tgt=`${tx.toFixed(1)}px ${ty.toFixed(1)}px`;
+    if(instant){cam.style.translate=tgt;cam.style.scale='1';continue}
+    const dur=Math.round(Math.max(280,Math.min(620,(gap||.6)*1000*.85)));
+    const a=camAnim(c,cam,[{translate:camCur(cam,'translate'),scale:camCur(cam,'scale')},{translate:tgt,scale:'1'}],{duration:dur,easing:EASE});
+    // held note: keep drifting gently instead of freezing
+    if(hold>1.1){const ang=(hashStr(tgt)%628)/100,d=Math.min(q.scr.w,q.scr.h)*.035,dx=Math.cos(ang)*d,dy=Math.sin(ang)*d;
+      a.next=()=>camAnim(c,cam,[{translate:tgt},{translate:`${(tx+dx).toFixed(1)}px ${(ty+dy).toFixed(1)}px`}],{duration:Math.round((hold-dur/1000)*1000),easing:'cubic-bezier(.3,0,.4,1)'})}}
+}
+function camFollowStart(c){
+  if(!c||!c.follow)return;let first=null;for(const u of c.U)if(u.geo&&!u.el.classList.contains('ghost')&&(!first||u.t<first.t))first=u;
+  if(!first)return;
+  // travel in from the previous line's direction so the song feels like one canvas
+  const tr=S.camTravel;S.camTravel=null;
+  for(const q of c.P){const cam=q.cam,tx=q.scr.w/2-first.geo.x,ty=q.scr.h/2-first.geo.y;
+    if(tr){cam.style.translate=`${(tx+tr.x*q.scr.w).toFixed(1)}px ${(ty+tr.y*q.scr.h).toFixed(1)}px`;
+      camAnim(c,cam,[{translate:cam.style.translate},{translate:`${tx.toFixed(1)}px ${ty.toFixed(1)}px`}],{duration:650,easing:EASE})}
+    else cam.style.translate=`${tx.toFixed(1)}px ${ty.toFixed(1)}px`}
+  if(c.shot==='crane')for(const q of c.P)q.cam.style.translate=`0px ${(q.scr.h/2-first.geo.y).toFixed(1)}px`;
+  if(c.shot==='dolly'){let last=first;for(const u of c.U)if(u.geo&&!u.el.classList.contains('ghost')&&u.t>=last.t)last=u;
+    const dur=Math.max(1200,((c.end||0)-(c.start||0))*1000*.82);
+    for(const q of c.P){const cam=q.cam,from=`${(q.scr.w/2-first.geo.x).toFixed(1)}px ${(q.scr.h/2-first.geo.y).toFixed(1)}px`,to=`${(q.scr.w/2-last.geo.x).toFixed(1)}px ${(q.scr.h/2-last.geo.y).toFixed(1)}px`;
+      cam.style.translate=from;const go=()=>camAnim(c,cam,[{translate:from},{translate:to}],{duration:dur,easing:'cubic-bezier(.45,0,.55,1)'});tr?setTimeout(go,720):go()}}
+}
+function camFollowWord(c,s){
+  if(!c||!c.follow||!s||!s.el)return;const u=c.U.find(q=>q.el===s.el||q.el.contains(s.el));if(!u||!u.geo)return;
+  const ur=u.el.getBoundingClientRect(),sr=s.el.getBoundingClientRect(),dx=(sr.left+sr.width/2)-(ur.left+ur.width/2),dy=(sr.top+sr.height/2)-(ur.top+ur.height/2);
+  const gap=s.next!=null?s.next-s.t:1.2,last=!c.spans.some(o=>o.t>s.t);
+  if(c.shot==='dolly'){if(last)c.revealAt=Math.max(s.t+.55,(c.end||s.t+2)-1.0);return}
+  if(c.shot==='open'){if(!c.opened){c.opened=true;c.revealed=true;const z=1/(c.z||1),dur=Math.max(1400,Math.min(3200,((c.end||0)-s.t)*1000*.7));
+    for(const q of c.P)camAnim(c,q.cam,[{translate:camCur(q.cam,'translate'),scale:camCur(q.cam,'scale')},{translate:'0px 0px',scale:z.toFixed(3)}],{duration:dur,easing:'cubic-bezier(.33,0,.15,1)'})}return}
+  if(c.shot==='crane'){for(const q of c.P){}camFollowTo(c,c.P[0].scr.w/2,u.geo.y+dy,false,last?0:gap,gap)}
+  else camFollowTo(c,u.geo.x+dx,u.geo.y+dy,false,last?0:gap,gap);
+  if(last)c.revealAt=Math.max(s.t+.55,(c.end||s.t+2)-1.0);
+}
+// pull back to show the whole line (a zoom-out, so it's free on memory)
+function camReveal(c){
+  if(!c||!c.follow||c.revealed)return;c.revealed=true;const z=1/(c.z||1);
+  for(const q of c.P)camAnim(c,q.cam,[{translate:camCur(q.cam,'translate'),scale:camCur(q.cam,'scale')},{translate:'0px 0px',scale:z.toFixed(3)}],{duration:900,easing:EASE});
+}
+// hand-over: the old line slides away the way the camera is about to travel
+function journey(){return camEff()==='follow'&&camOn()}
+// ---- stream: each line pops up below the last, the camera moves down, older lines slide up and off the top ----
+function streamOn(){return camEff()==='stream'&&camOn()}
+const ST={live:[],lastIdx:-9};
+function streamClear(){const L=ST.live;ST.live=[];ST.path=null;ST.cam=null;for(const o of L){o.noCanvas=true;retire(o)}}
+function streamKeep(c){
+  const i=S.idx,L=S.lines[i];
+  if(c.isTitle||!c.end||!L||!L.text||ST.lastIdx!==i-1||!c.path){streamClear();ST.lastIdx=i;return false}
+  ST.lastIdx=i;ST.live.push(c);return true;
+}
+const PATH_AIM={right:[.4,.52],down:[.42,.4],diag:[.42,.42],vert:[.5,.38],wave:[.42,.5],crescendo:[.42,.56],rise:[.42,.58],slam:[.5,.5],arc:[.5,.5]};
+function pathCamTo(x,y,dur,ease){
+  ST.cam={x,y};const all=ST.live.concat(S.cur?[S.cur]:[],ST.pending?[ST.pending]:[]);
+  for(const c of all)for(const q of c.P){if(q.pa){try{q.pa.commitStyles()}catch(e){}q.pa.cancel()}
+    const o=c.o||{x:0,y:0},from=getComputedStyle(q.exit).translate,to=`${(o.x-x).toFixed(1)}px ${(o.y-y).toFixed(1)}px`;q.exit.style.translate=to;
+    q.pa=dur?q.exit.animate([{translate:from==='none'?'0px 0px':from},{translate:to}],{duration:dur,easing:ease||'cubic-bezier(.33,0,.2,1)'}):null}
+  // words far from the camera don't render at all, so no line ever turns into a giant texture
+  {const q0=all[0]&&all[0].P[0];if(q0){const W0=q0.scr.w,H0=q0.scr.h;
+    for(const c of all)for(const u of c.U){if(!u.geo)continue;const o=c.o||{x:0,y:0},r=u.geo.fs*2.5,sx=u.geo.x+o.x-x,sy=u.geo.y+o.y-y;
+      const far=sx+r<-W0*.5||sx-r>W0*1.5||sy+r<-H0*.5||sy-r>H0*1.5;const d=far?'none':'';if(u.el.style.display!==d)u.el.style.display=d}}}
+  // drop lines that have run well off screen
+  const W0=S.cur&&S.cur.P[0]?S.cur.P[0].scr.w:1920,H0=S.cur&&S.cur.P[0]?S.cur.P[0].scr.h:1080;
+  ST.live=ST.live.filter((o,k)=>{const b=o.bbox,far=!b||b.x1<x-W0*.6||b.x0>x+W0*1.6||b.y1<y-H0*.6||b.y0>y+H0*1.6;
+    if(far||ST.live.length-k>6){o.g.style.transition='opacity .8s ease';o.g.style.opacity=0;setTimeout(()=>o.g.remove(),850);return false}return true});
+}
+function pathAim(c,u){const q=c.P[0],W=q.scr.w,H=q.scr.h;
+  const o=c.o||{x:0,y:0};if(c.wheel)return[c.wheel.cx+o.x-W*.5,c.wheel.cy+o.y-H*.55];
+  const a=PATH_AIM[c.phase]||[.45,.45];return[u.geo.x+o.x-W*a[0],u.geo.y+o.y-H*a[1]]}
+function pathArrange(C){
+  const pl=S.pathLine;S.pathLine=null;C.path=true;C.phase=pl.phase;C.wheel=pl.wheel;C.o={x:pl.ox,y:pl.oy};ST.lastIdx=S.idx;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const u of C.U){if(!u.geo)continue;const r=u.geo.fs*3;x0=Math.min(x0,u.geo.x-r);x1=Math.max(x1,u.geo.x+r);y0=Math.min(y0,u.geo.y-r);y1=Math.max(y1,u.geo.y+r)}
+  C.bbox={x0:x0+C.o.x,y0:y0+C.o.y,x1:x1+C.o.x,y1:y1+C.o.y};
+  if(C.wheel)for(const q of C.P){q.cam.style.transformOrigin=`${C.wheel.cx.toFixed(1)}px ${C.wheel.cy.toFixed(1)}px`;q.cam.style.animation='none'}
+  const first=C.U.filter(u=>u.geo&&!u.deco).sort((a,b)=>a.t-b.t)[0];if(!first)return;
+  const [tx,ty]=pathAim(C,first),fresh=!ST.cam||!ST.live.length;
+  if(fresh){ST.pending=C;pathCamTo(tx,ty,0);ST.pending=null;return}
+  for(const q of C.P)q.exit.style.translate=`${(C.o.x-ST.cam.x).toFixed(1)}px ${(C.o.y-ST.cam.y).toFixed(1)}px`;
+  ST.pending=C;pathCamTo(tx,ty,650);ST.pending=null;
+  // older lines dim a little as the path moves on
+  const n=ST.live.length;ST.live.forEach((o,k)=>{const age=n-k;o.g.style.transition='opacity .7s';o.g.style.opacity=age===1?.6:age===2?.38:.22});
+}
+function pathWord(c,s){
+  if(c!==S.cur||!s||!s.el)return;const u=c.U.find(q=>q.el===s.el||q.el.contains(s.el));if(!u||!u.geo)return;
+  const gap=s.next!=null?s.next-s.t:.8,dur=c.phase==='slam'?190:Math.round(Math.max(280,Math.min(620,gap*800)));
+  if(c.wheel&&u.theta!=null){for(const q of c.P){if(q.wa){try{q.wa.commitStyles()}catch(e){}q.wa.cancel()}
+      const from=getComputedStyle(q.cam).rotate,to=`${(-(u.theta+90)).toFixed(2)}deg`;q.cam.style.rotate=to;
+      q.wa=q.cam.animate([{rotate:from==='none'?'0deg':from},{rotate:to}],{duration:dur,easing:'cubic-bezier(.33,0,.2,1)'})}return}
+  const [tx,ty]=pathAim(c,u);pathCamTo(tx,ty,dur,c.phase==='slam'?'cubic-bezier(.12,.9,.2,1)':null);
+}
+function streamArrange(C){
+  if(C.isTitle)return;ST.lastIdx=S.idx;
+  C.srect=[];C.sty=[];
+  C.P.forEach((q,qi)=>{const W=q.scr.w,H=q.scr.h;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const u of C.U){if(!u.geo||u.el.classList.contains('ghost')||u.el.parentNode!==q.cam)continue;const ow=u.el.offsetWidth,oh=u.el.offsetHeight,ra=(u.geo.r||0)*Math.PI/180,cs=Math.abs(Math.cos(ra)),sn=Math.abs(Math.sin(ra)),w=(ow*cs+oh*sn)*.5,h=(ow*sn+oh*cs)*.5;
+      x0=Math.min(x0,u.geo.x-w);x1=Math.max(x1,u.geo.x+w);y0=Math.min(y0,u.geo.y-h);y1=Math.max(y1,u.geo.y+h)}
+    if(y1<y0){y0=H*.4;y1=H*.6}
+    const tn=H*(S.lastComp==='stream'?.56:.6)-(y0+y1)/2;C.srect[qi]={y0,y1};C.sty[qi]=tn;
+    q.exit.style.translate=`0px ${tn.toFixed(1)}px`;
+    q.exit.animate([{translate:`0px ${(tn+H*.32).toFixed(1)}px`},{translate:`0px ${tn.toFixed(1)}px`}],{duration:700,easing:EASE});
+    // the camera moves down: every older line slides up by the same amount, so the stack keeps its spacing
+    const prev=ST.live[ST.live.length-1];if(!prev||!prev.srect||!prev.srect[qi])return;
+    const gap=S.lastComp==='stream'?H*.012:H*.08,bottom=prev.srect[qi].y1+prev.sty[qi],delta=Math.min(-H*.1,(y0+tn-gap)-bottom);
+    for(const o of ST.live){const pq=o.P[qi];if(!pq||!o.srect)continue;
+      if(pq.sa){try{pq.sa.commitStyles()}catch(e){}pq.sa.cancel()}
+      const from=getComputedStyle(pq.exit).translate,ny=o.sty[qi]+delta;o.sty[qi]=ny;
+      pq.exit.style.translate=`0px ${ny.toFixed(1)}px`;
+      pq.sa=pq.exit.animate([{translate:from==='none'?'0px 0px':from},{translate:`0px ${ny.toFixed(1)}px`}],{duration:700,easing:EASE})}
+  });
+  // fade a little with age, drop lines that are off the top
+  const n=ST.live.length;
+  ST.live.forEach((o,k)=>{const age=n-k;o.g.style.transition='opacity .7s ease';o.g.style.opacity=age===1?.7:age===2?.48:.3});
+  ST.live=ST.live.filter(o=>{const off=o.P.every((q,qi)=>!o.srect[qi]||o.srect[qi].y1+o.sty[qi]<-q.scr.h*.02);
+    if(off||ST.live.length>5&&o===ST.live[0]){setTimeout(()=>o.g.remove(),750);return false}return true});
+}
+// ---- song canvas: lines stay where they were written, the camera travels to the next one ----
+const CV={live:[],cam:{x:0,y:0},dir:null,n:0,limit:0,lastIdx:-9};
+function canvasClear(){for(const o of CV.live){o.c.bg=false;o.c.noCanvas=true;retire(o.c)}CV.live=[];CV.cam={x:0,y:0};CV.dir=null;CV.n=0;S.canvasMove=null}
+// ---- letter dive: the camera flies through the hole of a letter (O, A, R, e...) into the next line ----
+const DIVE_CH=/[OoAaRrPpBbDdQqegG04689@&]/;
+function counterOf(span,ch){ // find the enclosed hole of a glyph by drawing it and flood-filling from the outside
+  const cs=getComputedStyle(span),w=span.offsetWidth,h=span.offsetHeight;if(w<4||h<4)return null;
+  const k=Math.min(4,140/h),W=Math.ceil(w*k)+8,H=Math.ceil(h*k)+8,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const x=cv.getContext('2d',{willReadFrequently:true});x.font=`${cs.fontStyle} ${cs.fontWeight} ${parseFloat(cs.fontSize)*k}px ${cs.fontFamily}`;
+  const t=cs.textTransform==='uppercase'?ch.toUpperCase():cs.textTransform==='lowercase'?ch.toLowerCase():ch;
+  const m=x.measureText(t);x.fillStyle='#000';x.textBaseline='alphabetic';x.fillText(t,4,4+m.fontBoundingBoxAscent);
+  const a=x.getImageData(0,0,W,H).data,N=W*H,lab=new Int32Array(N);for(let i=0;i<N;i++)lab[i]=a[i*4+3]>110?-1:0;
+  const fill=(s0,id)=>{const st=[s0];lab[s0]=id;let n=0,sx=0,sy=0,x0=1e9,y0=1e9,x1=-1,y1=-1;while(st.length){const p=st.pop(),px=p%W,py=(p/W)|0;n++;sx+=px;sy+=py;if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py;
+    for(const q of [px>0?p-1:-1,px<W-1?p+1:-1,py>0?p-W:-1,py<H-1?p+W:-1])if(q>=0&&lab[q]===0){lab[q]=id;st.push(q)}}return{n,sx,sy,bw:x1-x0+1,bh:y1-y0+1}};
+  fill(0,1);let best=null,id=2;
+  for(let i=0;i<N;i++)if(lab[i]===0){const r=fill(i,id++);if(r.n>40&&(!best||r.n>best.n))best=r}
+  if(!best)return null;
+  // only round, roomy holes: a sliver like A's triangle leaves the letter's ink filling the screen (a white flash)
+  const round=best.n/(best.bw*best.bh),aspect=Math.min(best.bw,best.bh)/Math.max(best.bw,best.bh);
+  if(round<.6||aspect<.45)return null;
+  return{fx:(best.sx/best.n-4)/k/w,fy:(best.sy/best.n-4)/k/h,r:Math.min(best.bw,best.bh)*.45/k};
+}
+function diveMaybe(c){try{return diveTry(c)}catch(e){crumb('dive-err');return false}}
+function diveTry(c){
+  const L=S.lines[S.idx];if(!L||!L.text||c.isTitle||!c.end||S.low||!c.P||!c.P[0])return false;
+  if(!S.diveAll){
+    // only at a real moment: a new section starting, or a breath before the line; never twice close together
+    const prev=S.lines[S.idx-1],secK=x=>x&&x.sec?x.sec.type+x.sec.num:'';
+    const newSec=prev&&L.sec&&secK(L)!==secK(prev),intoBig=L.sec&&(L.sec.type==='chorus'||L.sec.type==='bridge'),breath=prev&&L.t-prev.t>=2.6;
+    if(!(newSec&&intoBig)&&!(breath&&!L.sec))return false;
+    if(S.lastDiveT!=null&&Math.abs(L.t-S.lastDiveT)<45)return false;
+    if(hashStr(L.text+'|dive'+S.idx)%100>=60)return false}
+  const st=stage.getBoundingClientRect(),cands=[];
+  for(const u of c.U){if(u.deco||!u.geo||!u.on||u.el.classList.contains('ghost')||u.el.style.visibility==='hidden')continue;cands.push(u)}
+  cands.sort((a,b)=>b.geo.fs-a.geo.fs);
+  for(const u of cands.slice(0,4)){
+    const full=u.el.textContent,pos=[];for(let j=0;j<full.length&&pos.length<6;j++)if(DIVE_CH.test(full[j]))pos.push(j);
+    for(const gp of pos){
+      const walker=document.createTreeWalker(u.el,NodeFilter.SHOW_TEXT);let tn,acc=0,j=-1;
+      while((tn=walker.nextNode())){const n=tn.nodeValue.length;if(gp<acc+n){j=gp-acc;break}acc+=n}
+      if(!tn||j<0)continue;const ch=tn.nodeValue[j];{
+        const sp=document.createElement('span');sp.style.display='inline-block';const after=j?tn.splitText(j):tn;if(after.nodeValue.length>1)after.splitText(1);after.parentNode.insertBefore(sp,after);sp.appendChild(after);
+        const co=counterOf(sp,ch),R=sp.getBoundingClientRect(),ratio=R.width/Math.max(1,sp.offsetWidth);
+        if(!co||co.r*ratio<(S.diveAll?5:12)||R.right<st.left||R.left>st.right||R.bottom<st.top||R.top>st.bottom){sp.replaceWith(...sp.childNodes);u.el.normalize();continue}
+        const cx=R.left-st.left+co.fx*R.width,cy=R.top-st.top+co.fy*R.height,r0=co.r*ratio;
+        const far=Math.max(Math.hypot(cx,cy),Math.hypot(st.width-cx,cy),Math.hypot(cx,st.height-cy),Math.hypot(st.width-cx,st.height-cy));
+        const Z=Math.min(140,far/r0*2.2);if(Z<4){sp.replaceWith(...sp.childNodes);u.el.normalize();continue}
+        return diveRun(c,u,sp,co,{cx,cy,r0,Z});
+      }}
+  }
+  return false;
+}
+function diveRun(c,u,sp,co,d){
+  // the whole line flies toward the camera around the hole (words rush past), the letter carries on through
+  const dur=1000,ease='cubic-bezier(.4,0,.2,1)',K=10,E=Math.min(6,d.Z),sc=[],ex=[],lt=[];
+  for(let k=0;k<=K;k++){const z=Math.pow(d.Z,k/K),e=Math.min(E,z);sc.push(z);ex.push(e);lt.push(z/e)}
+  c.g.style.zIndex=4;
+  for(const q of c.P){q.exit.style.transformOrigin=`${(d.cx-q.scr.x).toFixed(1)}px ${(d.cy-q.scr.y).toFixed(1)}px`;
+    q.exit.animate(ex.map((e,k)=>({transform:`scale(${e.toFixed(3)})`,offset:k/K})),{duration:dur,easing:ease,fill:'forwards'})}
+  for(const o of c.U)if(o!==u)o.el.animate([{opacity:getComputedStyle(o.el).opacity},{opacity:1,offset:.3},{opacity:0,offset:.68},{opacity:0}],{duration:dur,easing:ease,fill:'forwards'});
+  // the hole letter's own word flies with the line too; only the letter keeps going
+  const fade=[{opacity:1},{opacity:1,offset:.3},{opacity:0,offset:.68},{opacity:0}];
+  for(const n of [sp.previousSibling,sp.nextSibling])if(n&&n.nodeType===3&&n.nodeValue){const w=document.createElement('span');n.replaceWith(w);w.appendChild(n);w.animate(fade,{duration:dur,easing:ease,fill:'forwards'})}
+  for(const w of u.el.querySelectorAll('.ws,.l'))if(!w.contains(sp))w.animate(fade,{duration:dur,easing:ease,fill:'forwards'});
+  sp.style.transformOrigin=`${(co.fx*100).toFixed(2)}% ${(co.fy*100).toFixed(2)}%`;
+  sp.animate(lt.map((s,k)=>({transform:`scale(${s.toFixed(3)})`,opacity:k/K>.8?Math.max(0,1-(k/K-.8)*5):1,offset:k/K})),{duration:dur,easing:ease,fill:'forwards'});
+  S.dive={...d,sc,dur,ease,at:performance.now(),idx:S.idx};S.lastDiveT=(S.lines[S.idx]||{}).t;
+  setTimeout(()=>{c.g.style.transition='opacity .3s';c.g.style.opacity=0;setTimeout(()=>c.g.remove(),320)},dur);
+  return true;
+}
+function lineRects(c){ // where this line's words actually sit on each screen right now
+  return c.P.map(q=>{const br=q.exit.parentNode.getBoundingClientRect();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const u of c.U){if(!u.geo||u.el.classList.contains('ghost')||u.el.style.visibility==='hidden')continue;const r=u.el.getBoundingClientRect();if(!r.width)continue;
+      x0=Math.min(x0,r.left-br.left);y0=Math.min(y0,r.top-br.top);x1=Math.max(x1,r.right-br.left);y1=Math.max(y1,r.bottom-br.top)}
+    return x1>x0?{x0,y0,x1,y1}:null})}
+function canvasKeep(c){
+  const i=S.idx,L=S.lines[i],prev=S.lines[i-1];
+  const secK=x=>x&&x.sec?x.sec.type+x.sec.num:'';
+  const clear=c.isTitle||!c.end||!L||!L.text||!prev||CV.lastIdx!==i-1||L.t-prev.t>4.2||secK(L)!==secK(prev)||CV.n>=CV.limit||S.low;
+  if(clear){canvasClear();CV.lastIdx=i;CV.n=0;CV.limit=2+hashStr((L&&L.text||'')+'|cv')%4;return false}
+  // park this line where it is in the world; the camera then travels to the next spot
+  if(!CV.live.find(o=>o.c===c))CV.live.push({c,x:CV.cam.x,y:CV.cam.y,rects:lineRects(c),tx:0,ty:0,s:1});
+  c.bg=true;
+  const dirs=[[1,0],[0,1],[-1,0],[.8,.8],[-.8,.8],[.8,-.8],[0,-1]],h=hashStr(L.text+'|dir'+i);
+  let d=dirs[h%dirs.length];if(CV.dir&&d[0]===-CV.dir[0]&&d[1]===-CV.dir[1])d=dirs[(h+1)%dirs.length];CV.dir=d;
+  const from={...CV.cam},to={x:CV.cam.x+d[0]*.8,y:CV.cam.y+d[1]*.72};CV.cam=to;CV.n++;CV.lastIdx=i;
+  S.canvasMove={from,to};
+  while(CV.live.length>2){const o=CV.live.shift();o.c.g.style.transition='opacity .8s ease';o.c.g.style.opacity=0;setTimeout(()=>o.c.g.remove(),850)}
+  return true;
+}
+// once the new line exists: older lines shrink, fade with age and get pushed clear of it
+function canvasArrange(C){
+  const m=S.canvasMove;S.canvasMove=null;if(!m)return;
+  for(const q of C.P){const a=`${((m.to.x-m.from.x)*q.scr.w).toFixed(1)}px ${((m.to.y-m.from.y)*q.scr.h).toFixed(1)}px`;q.exit.animate([{translate:a},{translate:'0px 0px'}],{duration:750,easing:EASE})}
+  const n=CV.live.length;
+  CV.live.forEach((o,k)=>{const age=n-k,op=age===1?.22:.08,sc=age===1?.62:.45;
+    o.c.g.style.transition='opacity .8s ease';o.c.g.style.opacity=op;
+    C.P.forEach((q,qi)=>{const pq=o.c.P[qi];if(!pq)return;const W=q.scr.w,H=q.scr.h,r=o.rects[qi];
+      // new line's footprint (layout spot, before any zoom), padded
+      let nx0=1e9,ny0=1e9,nx1=-1e9,ny1=-1e9;
+      for(const u of C.U){if(!u.geo||u.el.classList.contains('ghost'))continue;const w=u.el.offsetWidth*.5,hh=u.el.offsetHeight*.5;
+        nx0=Math.min(nx0,u.geo.x-w);nx1=Math.max(nx1,u.geo.x+w);ny0=Math.min(ny0,u.geo.y-hh);ny1=Math.max(ny1,u.geo.y+hh)}
+      const pad=Math.min(W,H)*.05;nx0-=pad;ny0-=pad;nx1+=pad;ny1+=pad;
+      let tx=(o.x-CV.cam.x)*W,ty=(o.y-CV.cam.y)*H;
+      if(r){const cx=(r.x0+r.x1)/2,cy=(r.y0+r.y1)/2,hw=(r.x1-r.x0)/2*sc,hh=(r.y1-r.y0)/2*sc;
+        pq.exit.style.transformOrigin=`${cx.toFixed(1)}px ${cy.toFixed(1)}px`;
+        // push away from the new line until the shrunken old line no longer overlaps it
+        let dx=cx+tx-(nx0+nx1)/2,dy=cy+ty-(ny0+ny1)/2;const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
+        if(Math.abs(dx)<.15&&Math.abs(dy)<.15){dx=CV.dir?-CV.dir[0]:1;dy=CV.dir?-CV.dir[1]:0}
+        for(let t=0;t<40;t++){const X=cx+tx,Y=cy+ty;if(X+hw<nx0||X-hw>nx1||Y+hh<ny0||Y-hh>ny1)break;tx+=dx*W*.03;ty+=dy*H*.03}
+        // older lines also stay clear of the newer parked ones
+        if(age>1){const nb=CV.live[k+1];if(nb&&nb.place&&nb.place[qi]){const b=nb.place[qi];
+          for(let t=0;t<30;t++){const X=cx+tx,Y=cy+ty;if(X+hw<b.x0||X-hw>b.x1||Y+hh<b.y0||Y-hh>b.y1)break;tx+=dx*W*.03;ty+=dy*H*.03}}}
+        (o.place=o.place||[])[qi]={x0:cx+tx-hw,x1:cx+tx+hw,y0:cy+ty-hh,y1:cy+ty+hh}}
+      const cs=getComputedStyle(pq.exit),fromT=cs.translate==='none'?'0px 0px':cs.translate,fromS=cs.scale==='none'?'1':cs.scale;
+      if(pq.cv){try{pq.cv.commitStyles()}catch(e){}pq.cv.cancel()}
+      const toT=`${tx.toFixed(1)}px ${ty.toFixed(1)}px`;pq.exit.style.translate=toT;pq.exit.style.scale=String(sc);
+      pq.cv=pq.exit.animate([{translate:fromT,scale:fromS},{translate:toT,scale:String(sc)}],{duration:750,easing:EASE})})});
+}
+function camTravelOut(c){
+  if(!c||!c.P)return;const h=hashStr(String(c.end||0)),dirs=[[1,0],[-1,0],[0,1],[0,-1],[.7,.7],[-.7,.7]],d=dirs[h%dirs.length];
+  S.camTravel={x:d[0]*1.3,y:d[1]*1.3};
+  for(const q of c.P){const cam=q.cam;if(c.fa){try{c.fa.commitStyles()}catch(e){}c.fa.cancel();c.fa=null}
+    const cur=camCur(cam,'translate').split(' ').map(parseFloat),sc=camCur(cam,'scale');
+    cam.animate([{translate:`${cur[0]||0}px ${cur[1]||0}px`,scale:sc},{translate:`${((cur[0]||0)-d[0]*q.scr.w*1.3).toFixed(1)}px ${((cur[1]||0)-d[1]*q.scr.h*1.3).toFixed(1)}px`,scale:sc,opacity:.4}],{duration:650,easing:EASE,fill:'forwards'})}
+}
+function camPunch(now){
+  if(!camOn()||now-CAM.lastPunch<210)return;CAM.lastPunch=now;const k=camK();
+  for(const {cam} of camCams()){CAM.pulse&&CAM.pulse.cancel();
+    CAM.pulse=camEff()==='follow'?cam.animate([{scale:`${1+.035*k}`},{scale:'1'}],{duration:200,easing:'cubic-bezier(.15,.85,.3,1)'}):cam.animate([{scale:`${1+.055*k}`,rotate:`${pick([-1,1])*1.4*k}deg`},{scale:'1',rotate:'0deg'}],{duration:230,easing:'cubic-bezier(.15,.85,.3,1)'})}
+}
+// drop: heavy zoom-shake that decays
+function camShake(){
+  if(!camOn())return;const k=camK(),kf=[];
+  for(let i=0;i<=9;i++){const d=(1-i/9),a=(i%2?1:-1)*rnd(10,22)*d*k,b=rnd(-14,14)*d*k;kf.push({translate:`${a.toFixed(1)}px ${b.toFixed(1)}px`,scale:`${1+.08*d*k}`,rotate:`${(a*.08).toFixed(2)}deg`})}
+  kf[kf.length-1]={translate:'0px 0px',scale:'1',rotate:'0deg'};
+  if(camEff()==='follow')for(const f of kf){delete f.translate;delete f.rotate}
+  for(const {cam} of camCams()){CAM.pulse&&CAM.pulse.cancel();CAM.pulse=cam.animate(kf,{duration:520,easing:'linear'})}
+  CAM.lastPunch=performance.now()+300;
+}
+// follow: a small look toward each word as it's sung
+function camWord(s){
+  if(!camOn()||!s||!s.el)return;const now=performance.now();if(now-CAM.lastPunch<160||now-CAM.lastNudge<140)return;CAM.lastNudge=now;
+  const k=camK();for(const {cam,scr} of camCams()){if(!cam.contains(s.el))continue;
+    const r=s.el.getBoundingClientRect(),b=cam.parentNode.getBoundingClientRect(),cx=r.left+r.width/2-b.left,cy=r.top+r.height/2-b.top;
+    const dx=(scr.w/2-cx)*.07*k,dy=(scr.h/2-cy)*.07*k;
+    CAM.pulse&&CAM.pulse.playState==='running'&&CAM.pulse.cancel();
+    CAM.pulse=cam.animate([{translate:'0px 0px',scale:'1'},{translate:`${dx.toFixed(1)}px ${dy.toFixed(1)}px`,scale:`${1+.03*k}`,offset:.35},{translate:'0px 0px',scale:'1'}],{duration:460,easing:'cubic-bezier(.25,.8,.3,1)'})}
+}
+function wordFx(s,p){
+  if(S.low||!S.react)return;
+  const w=(s.w||'').toLowerCase().replace(/[^\p{L}']/gu,''),el=s.el,R=S.react;
+  let kind=null;for(const [re,k] of WORD_FX)if(re.test(w)){kind=k;break}
+  const hold=s.next!=null?Math.max(0,s.next-s.t):0;
+  const A=(kf,o)=>el.animate(kf,Object.assign({easing:'cubic-bezier(.2,.8,.3,1)'},o));
+  switch(kind){
+    case'fall':A([{translate:'0 -.7em',rotate:'-6deg'},{translate:'0 .12em',rotate:'3deg',offset:.7},{translate:'0 0',rotate:'0deg'}],{duration:700,easing:'cubic-bezier(.5,0,.5,1.4)'});return;
+    case'rise':A([{translate:'0 .6em',opacity:.3},{translate:'0 -.08em',opacity:1,offset:.7},{translate:'0 0'}],{duration:1100});return;
+    case'spin':A([{rotate:'-360deg',scale:.6},{rotate:'0deg',scale:1}],{duration:800});return;
+    case'shake':A([{translate:'0 0'},{translate:'-.05em .02em'},{translate:'.05em -.02em'},{translate:'-.04em 0'},{translate:'.04em .02em'},{translate:'-.02em 0'},{translate:'0 0'}],{duration:450,iterations:2,easing:'linear'});return;
+    case'boom':A([{scale:2.1,opacity:.2},{scale:.92,opacity:1,offset:.55},{scale:1}],{duration:650});if(S.flashes!==false){const r=el.getBoundingClientRect();impactFlash(r.left+r.width/2,r.top+r.height/2)}return;
+    case'small':A([{scale:1},{scale:.78,opacity:.75}],{duration:600,fill:'forwards'});return;
+    case'big':A([{scale:1.55},{scale:1}],{duration:700,easing:'cubic-bezier(.2,1.4,.4,1)'});return;
+    case'fade':A([{opacity:1},{opacity:.35}],{duration:Math.max(900,hold*1000),fill:'forwards',easing:'ease-in'});return;
+    case'stretch':A([{scale:'1.7 1'},{scale:'1 1'}],{duration:Math.max(700,hold*900),easing:'cubic-bezier(.2,.9,.3,1)'});return;
+    case'pulse':A([{scale:1},{scale:1.18},{scale:1},{scale:1.12},{scale:1}],{duration:900,easing:'ease-in-out'});return;
+  }
+  // held note: the word swells for as long as it's sung
+  if(hold>.75){A([{scale:1},{scale:1+Math.min(.16,hold*.05)*R+.03}],{duration:hold*1000,easing:'cubic-bezier(.3,0,.3,1)',fill:'forwards'});return}
+  // belted words land bigger
+  const v=AU.mid||0;if(v>.72)A([{scale:1+.22*R*(v-.6)/.4},{scale:1}],{duration:320});
+}
+function impactFlash(x,y){
+  const L=$('light');if(!L)return;L.style.transform=`translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`;
+  if(S.flashes!==false){S.fxAnim=true;const a=L.animate([{opacity:1,scale:.4},{opacity:+(S.fxBase||.25),scale:1.3}],{duration:650,easing:'cubic-bezier(.1,.8,.3,1)'});a.onfinish=()=>{S.fxAnim=false;L.style.opacity=S.fxBase||.25}}
+  for(const u of liveUnits())if(!u.kf)u.el.animate([{scale:1.05},{scale:1}],{duration:180})
+}
+function runFx(now){
+  const R=S.low?Math.min(S.react,.25):S.react,L=$('light');
+  if(!R||!S.playing||S.clockMode){if(S.fxOn){S.fxOn=false;L.style.opacity=0;$('bg').style.opacity=''}return}
+  S.fxOn=true;
+  if(S.cur&&(S.cur!==S.fxLine||now-(S.fxAimT||0)>700)&&now-(S.fxAimT||0)>250){S.fxLine=S.cur;S.fxAimT=now;aimLight()}   // follow the words as they land
+  const ev=AU.ev;
+  // base glow: bass breathes it, heavy/distorted sections push it brighter
+  const heat=Math.min(1,AU.dist*1.6);
+  const scf=sceneOf(),chorusBoost=S.lineCtx&&S.lineCtx.chorus?.12:0,brk=S.cur&&S.cur.isBreak?-.05:0,lm=scf?scf.light:1;
+  const base=Math.min(1,Math.max(.06,(.18+AU.low*AU.low*.35*R+heat*.3*R+chorusBoost*R+brk)*lm)).toFixed(2);
+  if(base!==S.fxBase){S.fxBase=base;if(!S.fxAnim)L.style.opacity=base}
+  // bg also lifts a little with bass/heat
+  const bg=Math.min(1,(.42+AU.low*.25*R+heat*.2*R)*(scf?scf.bg:1)).toFixed(2);if(bg!==S.fxBg){S.fxBg=bg;$('bg').style.opacity=bg}
+  const pulse=(peak,dur)=>{S.fxAnim=true;const a=L.animate([{opacity:Math.min(1,peak)},{opacity:+S.fxBase}],{duration:dur,easing:'cubic-bezier(.2,.7,.3,1)'});a.onfinish=()=>{S.fxAnim=false;L.style.opacity=S.fxBase}};
+  if(ev.kick){const k=ev.kick;ev.kick=0;pulse(+S.fxBase+(.25+.35*k)*R,260);
+    linePulse([{scale:1+.03*R*(.5+k)},{scale:1}],{duration:190,easing:'cubic-bezier(.2,.8,.3,1)'})}
+  if(ev.hat)ev.hat=0;   // (hi-hat glint removed: it strobed a white shadow on the sung word)
+  if(ev.drop){ev.drop=0;if(S.flashes){S.fxAnim=true;
+      const a=L.animate([{opacity:1,scale:1.9},{opacity:+S.fxBase,scale:1}],{duration:900,easing:'cubic-bezier(.15,.8,.25,1)'});a.onfinish=()=>{S.fxAnim=false;L.style.opacity=S.fxBase}}
+    linePulse([{scale:1+.07*R},{scale:1}],{duration:420,easing:'cubic-bezier(.2,1.4,.4,1)'})}
+  // heavy sections: slow shimmering swell instead of flicker
+  if(heat>.3&&S.flashes&&!S.fxAnim&&now-(S.fxSwT||0)>520){S.fxSwT=now;pulse(Math.min(1,+S.fxBase+.3*R*heat),500)}
+  if(now-(S.fxGlowT||0)>350){S.fxGlowT=now;const g=(Math.round((.08+AU.vocal*.22*R)/.04)*.04).toFixed(2);if(g!==S.fxGlow){S.fxGlow=g;stage.style.setProperty('--glow',g+'em')}}
+}
+
+/* ---------- loop ---------- */
+function frame(now){
+  requestAnimationFrame(frame);
+  S.beatS+=(S.beat-S.beatS)*(S.beat>S.beatS?.12:.04);
+  try{updateMoodNow();runFx(now)}catch(e){S.fxErr=(S.fxErr||0)+1}
+  if(now-(S.healT||0)>1000){S.healT=now;try{heal(now)}catch(e){}}
+  const t=now/1000,cam=`rotate(${(Math.sin(t*.11)*.8).toFixed(2)}deg) scale(${(1+S.beatS*.008+Math.sin(t*.07)*.01).toFixed(4)})`;
+
+  if(S.dur&&now-(S.barT||0)>250){S.barT=now;$('bar').firstChild.style.transform=`scaleX(${Math.max(0,Math.min(1,rawPos()/S.dur)).toFixed(4)})`}
+  if(now-SY.lastCalc>2000){SY.lastCalc=now;if(SY.enabled&&S.lines.length)calcSync()}
+  if(SY.flashT&&now-SY.flashT>3500){SY.flashT=0;status(S.src||'')}
+  {const dt=now-(S.lastF||now);S.lastF=now;S.ft=(S.ft||[]);S.ft.push([now,dt]);while(S.ft.length&&now-S.ft[0][0]>3000)S.ft.shift();if(dt>50)S.longF=(S.longF||0)+1}
+  if(S.debug&&now-(S.dgT||0)>2000){S.dgT=now;let r=$('dgrep');if(!r){r=document.createElement('pre');r.id='dgrep';r.style.cssText='position:fixed;left:2%;top:4%;margin:0;padding:12px 16px;font:13px/1.35 Consolas,monospace;color:#e8f6e8;background:rgba(0,0,0,.82);border:1px solid #3a3;z-index:99;white-space:pre;pointer-events:none';document.body.appendChild(r)}try{r.textContent=DG.report()}catch(e){r.textContent='diag error '+e}{const R=S.scene||{x:0,y:0,w:innerWidth,h:innerHeight};r.style.left=(R.x+R.w*.015)+'px';r.style.top=(R.y+R.h*.03)+'px'}r.style.display='block'}
+  else if(!S.debug&&S.dgT){S.dgT=0;const r=$('dgrep');if(r)r.style.display='none'}
+  if(S.debug){const c=$('clk');c.style.display='block';if(S.hud){c.style.left=(S.hud.x+S.hud.w/2)+'px';c.style.top=(S.hud.y+S.hud.h*.4)+'px'}
+    c.textContent=`clock ${pos().toFixed(2)}  raw ${(S.tlRaw??-1).toFixed(2)}\nline ${S.idx}/${S.lines.length}  playing ${S.playing}\ncorr ${(S.kCur||0).toFixed(2)} bias ${S.snapBias.toFixed(2)} spread ${(S.kSpread||0).toFixed(2)}  tl ${S.tlCount||0} stale ${S.tlStale||0} snaps ${S.snaps||0} pb ${S.pbCount||0}\nraw ${(AU.raw||0).toFixed(3)} audio#${S.audioN||0} fx L${AU.low.toFixed(2)} M${AU.mid.toFixed(2)} H${AU.high.toFixed(2)} flat${AU.flat.toFixed(2)} dist${AU.dist.toFixed(2)} voc${AU.vocal.toFixed(2)}  k${AU.cnt.kick} h${AU.cnt.hat} d${AU.cnt.drop}\nauto ${SY.auto.toFixed(2)} nudge ${SY.nudge.toFixed(2)} offs ${S.offset}\nSTRIP ${STRIP}  fps ${(S.ft.length/3).toFixed(0)}  worst ${Math.max(...S.ft.map(f=>f[1])).toFixed(0)}ms  long>50ms ${S.longF||0}\ncanvas ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}\n${S.src||''}  |  ${S.provLog}\nsection ${S.sec?S.sec.type+' '+S.sec.num+' line '+(S.sec.i+1)+'/'+S.sec.n:'-'}\nmood ${S.mood.src} int ${S.mood.intensity.toFixed(2)} dark ${S.mood.dark.toFixed(2)} bpm ${S.mood.bpm||'-'} now ${S.moodNow.toFixed(2)} sec ${(AU.secE??0).toFixed(2)} bias ${S.fontBias||'-'} tags ${S.mood.tags.slice(0,4).map(t=>t.name).join(',')}`}else $('clk').style.display='none';
+  if(S.kLo!=null){const tgt=(S.kLo+S.kHi)/2,d=tgt-(S.kCur||0);if(Math.abs(d)>.002)S.kCur=(S.kCur||0)+Math.sign(d)*Math.min(Math.abs(d),.006)}
+  if(S.slew){const step=Math.sign(S.slew)*Math.min(Math.abs(S.slew),Math.max(.004,Math.abs(S.slew)*.06));S.basePos+=step;S.slew-=step;if(Math.abs(S.slew)<.002)S.slew=0}
+  // idle -> clock
+  const idle=S.clockOn&&VIS.main&&(!S.playing||!S.title)&&now-S.idleSince>3000;
+  if(idle){
+    if(!S.clockMode){S.clockMode=true;$('ticker').style.opacity=0;$('info').style.visibility='hidden'}
+    showClock();
+    const c=S.cur;if(c)for(const u of c.U)if(!u.on){u.on=true;u.el.style.transform=u.final;u.el.style.opacity=u.op;u.el.classList.add('on')}
+    if(c)for(const sp of c.spans)sp.el.classList.add('on');
+    return;
+  }
+  if(S.clockMode){S.clockMode=false;S.clockKey='';retire(S.cur);S.cur=null;S.idx=-99;$('ticker').style.opacity='';$('info').style.visibility=''}
+  const p=pos(),lead=journey()||streamOn()?.4:0;let i=-1;
+  for(let k=0;k<S.lines.length;k++){if(S.lines[k].t<=p+(k>0&&S.lines[k-1]&&S.lines[k].t-S.lines[k-1].t>lead*2.5?lead:0))i=k;else break}
+  // ignore tiny backwards wobble near a line boundary (only go back on a real seek)
+  if(i<S.idx&&S.idx>=0&&S.lines[S.idx]&&p>S.lines[S.idx].t-.8)i=S.idx;
+  if(i!==S.idx){S.idx=i;if(VIS.main){try{showLine(i)}catch(e){S.lineErr=(S.lineErr||0)+1;softReset('line error')}}if(VIS.ribbon)ribSet(i);if(VIS.echo)echoNext(i)}
+  if(VIS.ribbon)ribTick(p);
+  const c=S.cur;if(!c)return;
+  const kickNow=S.moodOn&&now-AU.lastKick<40;
+  if(camOn()&&(S.camMode==='tiktok'||S.camMode==='subtle')){if(CAM.dropPending){CAM.dropPending=false;camShake()}else if(now-AU.lastKick<34)camPunch(now)}
+  CAM.dropPending=false;
+  for(const u of c.U){const on=p>=u.t||(kickNow&&!u.on&&u.t-p<.12&&u.t-p>0);if(on!==u.on){u.on=on;
+    if(on&&u.kf){u.el.style.opacity=u.op;u.el.classList.add('on');const a=u.el.animate(u.kf,{duration:u.kfDur,fill:'forwards'});
+      a.onfinish=()=>{u.el.style.transform=u.final;a.cancel()};
+      if(u.impact&&!c.flashed){c.flashed=true;setTimeout(()=>impactFlash(u.impact.x,u.impact.y),u.impact.at)}
+      continue}
+    u.el.style.transform=on?u.final:u.from;u.el.style.opacity=on?u.op:0;u.el.classList.toggle('on',on)}}
+  if(c.follow&&c.revealAt&&p>=c.revealAt)camReveal(c);
+  let hot=null;for(const s of c.spans){const on=p>=s.t;
+    if(on&&!s.fired&&!c.noHot){s.fired=true;wordFx(s,p);if(c.follow)camFollowWord(c,s);else if(c.path)pathWord(c,s);else if(S.camMode==='tiktok'||S.camMode==='subtle')camWord(s)}
+    s.el.classList.toggle('on',on);if(on&&(!hot||s.t>=hot.t))hot=s}
+  if(hot!==c.hot){c.hot&&c.hot.el.classList.remove('hot');hot&&hot.el.classList.add('hot');c.hot=hot}
+}
+requestAnimationFrame(frame);
+$('sync').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.r){refreshAll('manual');return}const d=+b.dataset.d;
+  SY.nudge=d?Math.round((SY.nudge+d)*100)/100:0;saveNudge();updNudge()});
+
+/* ---------- self-healing: once a second, check that lyrics, audio, mood and the clock are alive, and repair what isn't ---------- */
+function softReset(why){
+  try{streamClear()}catch(e){}try{canvasClear()}catch(e){}
+  try{const st=$('stage');if(st)st.querySelectorAll('.grp').forEach(g=>g.remove())}catch(e){}
+  S.cur=null;S.idx=-99;S.heals=(S.heals||0)+1;S.lastHeal=why;
+}
+function refreshAll(why){
+  softReset(why);AU.pk=null;S.lastTL=null;           // re-learn audio levels, snap the clock on the next report
+  try{S.cache.clear()}catch(e){}
+  if(S.title){S.lyrRetry=0;S.noneAt=0;fetchLyrics();setTimeout(()=>fetchMood(S.reqId),900)}
+  flash('refreshed');
+}
+function heal(now){
+  // numbers that went bad (NaN / Infinity) are put back to safe values instead of poisoning everything after them
+  for(const k in AU){const v=AU[k];if(typeof v==='number'&&!isFinite(v))AU[k]=0}
+  if(AU.pk){const P=AU.pk;if(['l','m','h','t'].some(k=>!(P[k]>0&&P[k]<1e3)))AU.pk=null}
+  if(!isFinite(S.beat))S.beat=0;if(!isFinite(S.beatS))S.beatS=0;
+  if(!isFinite(S.basePos)){S.basePos=isFinite(S.tlRaw)?S.tlRaw:0;S.baseT=now}
+  if(!isFinite(S.kCur))S.kCur=0;if(S.mood){const M=S.mood;for(const k of['intensity','dark'])if(!isFinite(M[k]))M[k]=.5}
+  // audio: if Wallpaper Engine stops sending frames while music plays, ask for audio again
+  if(S.playing&&window.wallpaperRegisterAudioListener&&now-(S.audioT||0)>5000&&now-(S.audioRereg||0)>30000){
+    S.audioRereg=now;S.audioReregs=(S.audioReregs||0)+1;try{wallpaperRegisterAudioListener(onAudio)}catch(e){}}
+  // audio arrives but is silent for a long while during playback: tell the user once per song (usually the output device)
+  if(S.playing&&S.audioT&&now-S.audioT<1500&&now-(AU.soundT2||S.audioT)>20000&&!S.silentHint&&S.title){S.silentHint=true;flash('no sound reaching the wallpaper — check the output device')}
+  // lyrics: a line that should be on screen but isn't (lost, removed, or a build error) is rebuilt
+  if(VIS.main&&S.playing&&S.lines.length&&S.idx>=0){const L=S.lines[S.idx],ok=S.cur&&S.cur.g&&S.cur.g.isConnected;
+    if(L&&L.text&&!ok){if(!S.missT)S.missT=now;else if(now-S.missT>1500){S.missT=0;softReset('line missing')}}else S.missT=0}else S.missT=0;
+  // lyrics: none found (or the network failed) -> try again after 20 s and 60 s
+  if(S.title&&!S.lines.length&&S.noneAt&&(S.lyrRetry||0)<2&&now-S.noneAt>(S.lyrRetry?60000:20000)){S.lyrRetry=(S.lyrRetry||0)+1;S.noneAt=0;fetchLyrics()}
+  // too many errors in a short time: start the stage clean
+  const errs=(S.fxErr||0)+(S.lineErr||0);if(errs-(S.errSeen||0)>20){S.errSeen=errs;softReset('error burst')}else if(now-(S.errSeenT||0)>10000){S.errSeenT=now;S.errSeen=errs}
+}
+function setTrack(title,artist,album){
+  if(!title)return;
+  const changed=title!==S.title||artist!==S.artist;
+  if(S.pendTrack){const P=S.pendTrack;S.pendTrack=null;
+    if(changed)S.tcLat=Math.round(performance.now()-P.at);           // how late the title came after the new timeline (diagnostics)
+    else{S.lines=P.lines;S.src=P.src;S.idx=-99;status(S.src)}}
+  S.title=title||'';S.artist=artist||'';S.album=album||'';
+  if(!changed)return;
+  $('t').textContent=S.title;$('a').textContent=S.artist;
+  // background title ticker: only as many copies as needed to loop seamlessly (it used to be a ~70,000px wide layer)
+  {const tk=$('ticker'),one=S.title+' — ';tk.textContent=one;const w=Math.max(1,tk.scrollWidth),box=tk.parentElement.getBoundingClientRect().width||innerWidth;
+    const n=Math.max(2,Math.min(12,2*Math.ceil(1.15*box/w)));tk.textContent=one.repeat(n)}
+  S.lyrRetry=0;S.noneAt=0;S.moodRetried=false;S.silentHint=false;
+  if(!S.tcLat)S.dur=0;S.mood={intensity:.5,dark:.5,bpm:0,tags:[],src:'…'};AU.eSong=null;fetchLyrics();setTimeout(()=>fetchMood(S.reqId),900);setEcho();
+}
+
+/* ---------- Wallpaper Engine hooks ---------- */
+window.wallpaperPropertyListener={applyUserProperties(p){
+  if(!p||typeof p!=='object')return;
+  p={...p};for(const k in p)if(!p[k]||typeof p[k]!=='object'||p[k].value==null)delete p[k];   // empty values are ignored, not applied
+  try{if(p.offset)S.offset=+p.offset.value||0;}catch(e){}
+  try{if(p.dim)root.style.setProperty('--dim',Math.max(0,Math.min(1,(+p.dim.value||0)/100)));}catch(e){}
+  try{if(p.invert)root.classList.toggle('inv',!!p.invert.value);}catch(e){}
+  try{if(p.accent)S.manualAccent=wpColor(p.accent.value);}catch(e){}
+  try{if(p.autoaccent)S.autoAccent=p.autoaccent.value;}catch(e){}
+  try{if(p.accent||p.autoaccent){if(!S.autoAccent)setAccent(S.manualAccent);else if($('art').src)accentFromImage($('art').src)}}catch(e){}
+  try{if(p.autosync){SY.enabled=p.autosync.value;if(!SY.enabled)SY.auto=0}}catch(e){}
+  let re=false;
+  try{if(p.transition)S.theme=p.transition.value;}catch(e){}
+  try{if(p.layout){S.layout=p.layout.value;S.idx=-99}}catch(e){}
+  try{if(p.chaos)S.chaos=Math.max(0,Math.min(1,(+p.chaos.value||0)/100));}catch(e){}
+  try{if(p.carry)S.carry=p.carry.value;}catch(e){}
+  try{if(p.camera)S.camMode=p.camera.value;}catch(e){}
+  try{if(p.camamount)S.camAmt=isFinite(+p.camamount.value)?+p.camamount.value:S.camAmt;}catch(e){}
+  try{if(p.preset&&p.preset.value!=='custom'){const P={
+      minimal:{theme:'smooth',layout:'flow',chaos:0,react:.3,carry:true,bg:'solid'},
+      calm:{theme:'smooth',layout:'auto',chaos:.1,react:.45,carry:true},
+      balanced:{theme:'mixed',layout:'auto',chaos:.35,react:.6,carry:true},
+      hype:{theme:'energetic',layout:'auto',chaos:.6,react:1,carry:true},
+      chaos:{theme:'mixed',layout:'auto',chaos:1,react:.9,carry:true}}[p.preset.value];
+    if(P){S.theme=P.theme;S.layout=P.layout;S.chaos=P.chaos;S.react=P.react;S.carry=P.carry;if(P.bg)setBgMode(P.bg);S.idx=-99}}}catch(e){}
+  try{if(p.bgmode)setBgMode(p.bgmode.value);}catch(e){}
+  try{if(p.lowpower){S.low=p.lowpower.value;root.classList.toggle('lowpower',S.low)}}catch(e){}
+  try{if(p.choreo){S.choreo=p.choreo.value;S.idx=-99}}catch(e){}
+  try{if(p.moodon){S.moodOn=p.moodon.value;applyMood()}}catch(e){}
+  try{if(p.lastfmkey){const k=(p.lastfmkey.value||'').trim();if(k!==S.lfmKey){S.lfmKey=k;if(S.title)fetchMood(S.reqId)}}}catch(e){}
+  try{if(p.idleclock){S.clockOn=p.idleclock.value}}catch(e){}
+  try{if(p.reactivity)S.react=Math.max(0,Math.min(2,(+p.reactivity.value||0)/100));}catch(e){}
+  try{if(p.flashes)S.flashes=p.flashes.value;}catch(e){}
+  try{if(p.clock24){S.clock24=p.clock24.value;S.clockKey=''}}catch(e){}
+  try{if(p.provider&&p.provider.value!==S.provider){S.provider=PROVIDERS[p.provider.value]?p.provider.value:'auto';S.cache.clear();if(S.title)fetchLyrics()}}catch(e){}
+  try{if(p.showinfo){S.showInfo=p.showinfo.value;re=true}}catch(e){}
+  try{if(p.hudlift)root.style.setProperty('--hudlift',Math.max(0,Math.min(.3,(+p.hudlift.value||0)/100)))}catch(e){}
+  try{if(p.bgcolor){const c=String(p.bgcolor.value).split(/\s+/).map(v=>Math.round(Math.max(0,Math.min(1,+v||0))*255));if(c.length>=3)root.style.setProperty('--bgc',`rgb(${c[0]},${c[1]},${c[2]})`)}}catch(e){}
+  try{if(p.layoutmode){S.layoutMode=p.layoutmode.value;re=true}}catch(e){}
+  try{if(p.monitors&&p.monitors.value){S.monitors=p.monitors.value;re=true}}catch(e){}
+  try{if(p.showscreens){S.debug=p.showscreens.value;re=true}}catch(e){}
+  try{if(p.role){S.role=ROLE[p.role.value]||'main';re=true}}catch(e){}
+  if(re)try{layout()}catch(e){}
+}};
+
+layout();
+if(window.wallpaperRegisterMediaPropertiesListener){
+  wallpaperRegisterMediaStatusListener(e=>{if(!e.enabled)status('enable media integration in WE settings')});
+  wallpaperRegisterMediaPropertiesListener(e=>{try{DG.ev('TITLE',(e&&e.title||'').slice(0,18))}catch(x){}setTrack(e.title,e.artist,e.albumTitle)});
+  wallpaperRegisterMediaThumbnailListener(e=>{try{DG.ev('cover',e&&e.thumbnail?String(e.thumbnail.length):'none')}catch(x){}if(!e.thumbnail||e.thumbnail===S.thumb)return;S.thumb=e.thumbnail;$('art').src=e.thumbnail;softBg(e.thumbnail);accentFromImage(e.thumbnail);setEcho()});
+  wallpaperRegisterMediaPlaybackListener(e=>{try{DG.ev('play',String(e&&e.state))}catch(x){}const pl=e.state===window.wallpaperMediaIntegration.PLAYBACK_PLAYING;S.pbCount=(S.pbCount||0)+1;S.pbState=pl;if(pl===S.playing)return;const p=baseClock();S.playing=pl;if(!pl)S.idleSince=performance.now();S.basePos=p;S.baseT=performance.now()});
+  wallpaperRegisterMediaTimelineListener(e=>{
+    if(!e)return;const now=performance.now(),pos=+e.position;if(!isFinite(pos)||pos<0||pos>36000)return;S.tlCount=(S.tlCount||0)+1;S.tlRaw=pos;try{DG.tl();DG.ev('time',pos.toFixed(0)+'/'+(+e.duration||0).toFixed(0))}catch(e){}
+    {const nd=+e.duration;
+     if(isFinite(nd)&&nd>0&&S.dur>0&&Math.abs(nd-S.dur)>1.5&&pos<8&&S.lines.length&&!S.pendTrack){
+       // Spotify often sends the new song's timeline before its title: stop showing the old song's lyrics right away
+       S.pendTrack={lines:S.lines,src:S.src,at:now};S.reqId++;S.lines=[];S.idx=-99;status('next song…');
+       setTimeout(()=>{const P=S.pendTrack;if(P&&P.at===now){S.pendTrack=null;S.lines=P.lines;S.src=P.src;S.idx=-99;status(S.src)}},8000)}   // no new title came: it was the same song
+     if(isFinite(nd)&&nd>0)S.dur=nd}
+    const first=S.lastTL==null,same=!first&&Math.abs(pos-S.lastTL)<.02;
+    if(same){S.tlStale=(S.tlStale||0)+1;return}                  // same value re-sent: stale, ignore it
+    // judge the report against the previous REPORT, not against our running clock
+    const dtR=first?0:(now-S.lastTLT)/1000,adv=first?0:pos-S.lastTL;
+    S.lastTL=pos;S.lastTLT=now;
+    if(!first&&adv>0&&S.pbState!==false)S.playing=true;
+    // Spotify reports whole seconds (floor), so the true position is in [pos, pos+1) + a little report lag.
+    // Spotify reports floor(seconds). Each report says: true position is in [pos, pos+1).
+    // Intersect those windows over time -> the clock's correction narrows to the real phase.
+    const c=baseClock(),lo=pos-c,hi=pos+1-c,est=c+(S.kCur||0);
+    // rounding + report lag can make a report up to ~1.3s 'earlier' than the last one; only bigger jumps are real seeks
+    const seek=first||adv<-1.6||adv>dtR+2.2||est<pos-1.8||est>pos+2.8;
+    if(seek||!S.playing){S.basePos=pos;S.baseT=now;S.kCur=S.snapBias;S.kLo=S.kHi=S.snapBias;S.kRes=[0];S.kLearned=false;SY.last=-1;S.snaps=(S.snaps||0)+1}
+    else{
+      // Each report is floor(true position at some earlier moment): it can only be BEHIND the song, never ahead.
+      // So the true correction k >= every residual, and the largest residual is a hard lower bound.
+      // k sits just above it; the expected gap shrinks as reports pile up (~1.15/(n+1)).
+      S.kRes.push(lo);if(S.kRes.length>14)S.kRes.shift();
+      const n=S.kRes.length,mx=Math.max(...S.kRes),mn=Math.min(...S.kRes);S.kSpread=mx-mn;
+      const est=mx+1.15/(n+1);S.kLo=S.kHi=est;
+      // remember the settled value so the next song / seek starts already compensated
+      if(n>=10&&!S.kLearned){S.kLearned=true;S.snapBias=Math.max(-1.5,Math.min(2,S.snapBias*.5+est*.5));
+        try{localStorage.setItem('kl:snapBias',S.snapBias.toFixed(3))}catch(e){}}
+    }
+  });
+  if(window.wallpaperRegisterAudioListener)wallpaperRegisterAudioListener(onAudio);
+  status('waiting for music…');
+}else{
+  /* browser preview with placeholder text */
+  const Q=new URLSearchParams(location.search);
+  S.layoutMode=Q.get('layout')||'single';S.layout=Q.get('wl')||S.layout;if(Q.has('chaos'))S.chaos=+Q.get('chaos');S.theme=Q.get('theme')||S.theme;S.role=ROLE[Q.get('role')||'main'];S.debug=Q.has('debug');layout();
+  setTrack('Preview Mode','Kinetic Lyrics','');
+  S.reqId++;status('preview');
+  const demo=['type in motion','every line a different shape','big','words that fall and shatter','outline and fill and colour in between','stack it up','tilt','the beat keeps the camera breathing','',
+              'one more time from the top'];
+  S.lines=demo.map((text,i)=>({t:2+i*3.2,text}));S.dur=demo.length*3.2+4;S.playing=true;S.basePos=+location.hash.slice(1)||0;S.baseT=performance.now();
+  setInterval(()=>{if(rawPos()>S.dur){S.basePos=0;S.baseT=performance.now()}},500);
+  (function fake(){const t=performance.now()/1000,b=Math.max(0,Math.sin(t*Math.PI*4))**8,d=(t%12)>9;
+    const a=new Array(128).fill(0).map((_,k)=>{const f=k%64;return f<5?b*.5:f<30?.05+.04*Math.sin(t*3):f>36?(Math.random()<.2?.08:.01)+(d?.12+Math.random()*.1:0):.02+(d?.1+Math.random()*.1:0)});
+    onAudio(a.map(v=>v*(window.__amp??1)));requestAnimationFrame(fake)})();
+}
+</script>
+</body>
+</html>

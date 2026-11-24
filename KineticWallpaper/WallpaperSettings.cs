@@ -6,16 +6,32 @@ namespace KineticWallpaper;
 
 public sealed class WallpaperSettings
 {
-    public double GlobalOffsetMs { get; set; } = 0;
-    public double BeatReactivity { get; set; } = 0.65;
-    public double Chaos { get; set; } = 0.35;
+    public string Preset { get; set; } = "custom";
+    public string Layout { get; set; } = "auto";
+    public string Transition { get; set; } = "mixed";
+    public int Chaos { get; set; } = 35;
+    public bool Choreo { get; set; } = true;
+    public bool Carry { get; set; } = true;
+    public string Camera { get; set; } = "auto";
+    public int CamAmount { get; set; } = 50;
+    public string BgMode { get; set; } = "art";
+    public int Dim { get; set; } = 55;
     public bool AutoAccent { get; set; } = true;
-    public bool ShowIdleClock { get; set; } = true;
-    public bool Clock24Hour { get; set; } = true;
-    public bool ShowSongInfo { get; set; } = true;
-    public bool BlurredAlbumBg { get; set; } = true;
-    public double BackgroundDim { get; set; } = 0.55;
-    public double HudLiftPercent { get; set; } = 0.065;
+    public string Accent { get; set; } = "1 0.3 0.43";
+    public bool Invert { get; set; } = false;
+    public string Provider { get; set; } = "auto";
+    public int Offset { get; set; } = 0;
+    public bool AutoSync { get; set; } = false;
+    public int Reactivity { get; set; } = 60;
+    public bool Flashes { get; set; } = true;
+    public bool MoodOn { get; set; } = true;
+    public bool ShowInfo { get; set; } = true;
+    public int HudLift { get; set; } = 4;
+    public bool IdleClock { get; set; } = true;
+    public bool Clock24 { get; set; } = true;
+    public bool LowPower { get; set; } = false;
+    public string LayoutMode { get; set; } = "multi";
+    public string Monitors { get; set; } = "";
 
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -40,6 +56,56 @@ public sealed class WallpaperSettings
             File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
         }
         catch { }
+    }
+
+    public static string BuildAutoMonitorsString()
+    {
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        if (screens.Length <= 1) return "";
+        var primary = System.Windows.Forms.Screen.PrimaryScreen;
+        var parts = new List<string>();
+        foreach (var s in screens)
+        {
+            string role = s == primary ? ":main" : "";
+            parts.Add($"{s.Bounds.Width}x{s.Bounds.Height}@{s.Bounds.X},{s.Bounds.Y}{role}");
+        }
+        return string.Join("; ", parts);
+    }
+
+    public Dictionary<string, object> ToWallpaperEngineProperties()
+    {
+        string monitors = string.IsNullOrWhiteSpace(Monitors) ? BuildAutoMonitorsString() : Monitors;
+        string mode = string.IsNullOrWhiteSpace(monitors) ? "single" : LayoutMode;
+
+        return new Dictionary<string, object>
+        {
+            ["preset"] = new { value = Preset },
+            ["layout"] = new { value = Layout },
+            ["transition"] = new { value = Transition },
+            ["chaos"] = new { value = Chaos },
+            ["choreo"] = new { value = Choreo },
+            ["carry"] = new { value = Carry },
+            ["camera"] = new { value = Camera },
+            ["camamount"] = new { value = CamAmount },
+            ["bgmode"] = new { value = BgMode },
+            ["dim"] = new { value = Dim },
+            ["autoaccent"] = new { value = AutoAccent },
+            ["accent"] = new { value = Accent },
+            ["invert"] = new { value = Invert },
+            ["provider"] = new { value = Provider },
+            ["offset"] = new { value = Offset },
+            ["autosync"] = new { value = AutoSync },
+            ["reactivity"] = new { value = Reactivity },
+            ["flashes"] = new { value = Flashes },
+            ["moodon"] = new { value = MoodOn },
+            ["showinfo"] = new { value = ShowInfo },
+            ["hudlift"] = new { value = HudLift },
+            ["idleclock"] = new { value = IdleClock },
+            ["clock24"] = new { value = Clock24 },
+            ["lowpower"] = new { value = LowPower },
+            ["layoutmode"] = new { value = mode },
+            ["monitors"] = new { value = monitors }
+        };
     }
 
     public static bool IsStartupEnabled()

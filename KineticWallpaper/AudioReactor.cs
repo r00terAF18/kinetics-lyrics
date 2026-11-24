@@ -7,24 +7,11 @@ namespace KineticWallpaper;
 public sealed class AudioReactor : IDisposable
 {
     private WasapiLoopbackCapture? _capture;
-    private readonly Complex[] _fftBuffer = new Complex[1024];
+    private readonly Complex[] _fftLeft = new Complex[1024];
+    private readonly Complex[] _fftRight = new Complex[1024];
     private int _fftPos;
-
-    private float _peakLow = 0.002f;
-    private float _peakMid = 0.002f;
-    private float _peakHigh = 0.002f;
-    private float _peakTotal = 0.002f;
-    private float _lowAvg = 0.25f;
-    private float _totalSlow = 0.25f;
-    private long _lastKickMs;
-    private long _lastDropMs;
-
-    public float Low { get; private set; }
-    public float Mid { get; private set; }
-    public float High { get; private set; }
-    public float BeatSmooth { get; private set; }
-    public float KickImpulse { get; private set; }
-    public float DropImpulse { get; private set; }
+    private readonly float[] _bins = new float[128];
+    private readonly object _lock = new();
 
     public void Start()
     {
@@ -36,14 +23,18 @@ public sealed class AudioReactor : IDisposable
         }
         catch
         {
+            // No active audio output device
         }
     }
 
-    public void StepFrame()
+    public float[] GetFftBinsCopy()
     {
-        BeatSmooth += (Low - BeatSmooth) * (Low > BeatSmooth ? 0.18f : 0.05f);
-        KickImpulse *= 0.84f;
-        DropImpulse *= 0.90f;
+        lock (_lock)
+        {
+            var copy = new float[128];
+            Array.Copy(_bins, copy, 128);
+            return copy;
+        }
     }
 
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
@@ -55,77 +46,60 @@ public sealed class AudioReactor : IDisposable
 
         for (int offset = 0; offset + frameBytes <= e.BytesRecorded; offset += frameBytes)
         {
-            float mono = 0;
+            float left = 0;
+            float right = 0;
             for (int c = 0; c < channels; c++)
             {
                 int pos = offset + c * bytesPerSample;
-                mono += bytesPerSample == 4
+                float sample = bytesPerSample == 4
                     ? BitConverter.ToSingle(e.Buffer, pos)
                     : BitConverter.ToInt16(e.Buffer, pos) / 32768f;
+                if (c == 0) left = sample;
+                if (c == 1 || channels == 1) right = sample;
             }
-            mono /= channels;
 
-            double w = 0.5 * (1.0 - Math.Cos(2.0 * Math.PI * _fftPos / (_fftBuffer.Length - 1)));
-            _fftBuffer[_fftPos].X = (float)(mono * w);
-            _fftBuffer[_fftPos].Y = 0;
+            double w = 0.5 * (1.0 - Math.Cos(2.0 * Math.PI * _fftPos / 1023.0));
+            _fftLeft[_fftPos].X = (float)(left * w);
+            _fftLeft[_fftPos].Y = 0;
+            _fftRight[_fftPos].X = (float)(right * w);
+            _fftRight[_fftPos].Y = 0;
             _fftPos++;
 
-            if (_fftPos >= _fftBuffer.Length)
+            if (_fftPos >= 1024)
             {
                 _fftPos = 0;
-                AnalyzeFft();
+                ComputeBins();
             }
         }
     }
 
-    private void AnalyzeFft()
+    private void ComputeBins()
     {
-        FastFourierTransform.FFT(true, 10, _fftBuffer);
+        FastFourierTransform.FFT(true, 10, _fftLeft);
+        FastFourierTransform.FFT(true, 10, _fftRight);
 
-        float BandEnergy(int startBin, int endBin)
+        lock (_lock)
         {
-            float sum = 0;
-            for (int i = startBin; i < endBin; i++)
-                sum += MathF.Sqrt(_fftBuffer[i].X * _fftBuffer[i].X + _fftBuffer[i].Y * _fftBuffer[i].Y);
-            return sum / Math.Max(1, endBin - startBin);
+            // Map 512 positive FFT bins into 64 logarithmically spaced bands per channel (matching Wallpaper Engine)
+            for (int b = 0; b < 64; b++)
+            {
+                double t0 = b / 64.0;
+                double t1 = (b + 1) / 64.0;
+                int start = Math.Max(1, (int)Math.Floor(Math.Pow(512.0, t0)));
+                int end = Math.Max(start + 1, Math.Min(512, (int)Math.Ceiling(Math.Pow(512.0, t1))));
+
+                float sumL = 0, sumR = 0;
+                for (int k = start; k < end; k++)
+                {
+                    sumL += MathF.Sqrt(_fftLeft[k].X * _fftLeft[k].X + _fftLeft[k].Y * _fftLeft[k].Y);
+                    sumR += MathF.Sqrt(_fftRight[k].X * _fftRight[k].X + _fftRight[k].Y * _fftRight[k].Y);
+                }
+
+                float scale = (1.0f + b * 0.14f) * 3.5f / (end - start);
+                _bins[b] = Math.Clamp(sumL * scale, 0f, 1.5f);
+                _bins[64 + b] = Math.Clamp(sumR * scale, 0f, 1.5f);
+            }
         }
-
-        float rl = BandEnergy(1, 6);
-        float rm = BandEnergy(7, 45);
-        float rh = BandEnergy(46, 180);
-        float rt = (rl + rm + rh) / 3f;
-
-        _peakLow = Math.Max(_peakLow * 0.996f, rl);
-        _peakMid = Math.Max(_peakMid * 0.996f, rm);
-        _peakHigh = Math.Max(_peakHigh * 0.996f, rh);
-        _peakTotal = Math.Max(_peakTotal * 0.998f, rt);
-
-        if (_peakTotal < 0.0005f)
-        {
-            Low = Mid = High = 0;
-            return;
-        }
-
-        Low = Math.Clamp(rl / _peakLow, 0f, 1f);
-        Mid = Math.Clamp(rm / _peakMid, 0f, 1f);
-        High = Math.Clamp(rh / _peakHigh, 0f, 1f);
-        float tot = Math.Clamp(rt / _peakTotal, 0f, 1f);
-
-        long now = Environment.TickCount64;
-        if (Low > _lowAvg * 1.32f + 0.08f && Low > 0.48f && now - _lastKickMs > 170)
-        {
-            KickImpulse = Math.Clamp((Low - _lowAvg) * 1.9f, 0.25f, 1f);
-            _lastKickMs = now;
-        }
-
-        if (tot > _totalSlow * 1.85f && _totalSlow < 0.42f && tot > 0.72f && now - _lastDropMs > 4000)
-        {
-            DropImpulse = 1f;
-            _lastDropMs = now;
-        }
-
-        _lowAvg = _lowAvg * 0.90f + Low * 0.10f;
-        _totalSlow = _totalSlow * 0.985f + tot * 0.015f;
     }
 
     public void Dispose()
