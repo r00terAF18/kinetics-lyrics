@@ -99,6 +99,8 @@ public static class DesktopWallpaperHost
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string? pvParam, uint fWinIni);
 
+    private static string _lastOrderCheck = "Not sampled";
+    private static int _orderRepairs;
     private static DispatcherTimer? _watchdog;
     public static DesktopAttachMode CurrentMode { get; private set; } = DesktopAttachMode.AutoShell;
     public static string ModeDescription { get; private set; } = "Initializing";
@@ -124,8 +126,7 @@ public static class DesktopWallpaperHost
             _watchdog?.Stop();
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
-            SetParent(hwnd, 0);
-            SystemParametersInfo(SpiSetDeskWallpaper, 0, null, SpifSendChange);
+            // Do not reset the user's static wallpaper when the live window closes.
         };
 
         void OnDisplaySettingsChanged(object? sender, EventArgs e) =>
@@ -164,21 +165,33 @@ public static class DesktopWallpaperHost
             return;
         }
 
-        var shellDefView = FindWindowEx(progman, 0, "SHELLDLL_DefView", null);
-        if (shellDefView != 0 && GetParent(hwnd) == progman)
+        if (GetParent(hwnd) != progman) return;
+        var icons = FindWindowEx(progman, 0, "SHELLDLL_DefView", null);
+        var wallpaper = FindWindowEx(progman, 0, "WorkerW", null);
+        if (icons == 0 || !UsableWorker(wallpaper, progman)) return;
+
+        // EnumChildWindows includes descendants; compare only the three direct siblings.
+        var order = new List<nint>(3);
+        EnumChildWindows(progman, (h, _) =>
         {
-            SetWindowPos(hwnd, shellDefView, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
-            var workerW = FindWindowEx(progman, 0, "WorkerW", null);
-            if (workerW != 0 && workerW != hwnd)
-                SetWindowPos(workerW, hwnd, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
-        }
+            if (h == icons || h == hwnd || h == wallpaper) order.Add(h);
+            return order.Count < 3;
+        }, 0);
+        if (order.Count != 3 || (order[0] == icons && order[1] == hwnd)) return;
+        var before = string.Join(" > ", order.Select(h => h == icons ? "icons" : h == hwnd ? "app" : "static"));
+        uint flags = SwpNoMove | SwpNoSize | SwpNoActivate;
+        // If Explorer raised its static plane above even the icons, moving our window alone
+        // cannot put it both below the icons and above that plane.
+        bool ok = order.IndexOf(wallpaper) > order.IndexOf(icons) || SetWindowPos(wallpaper, HwndBottom, 0, 0, 0, 0, flags);
+        ok = ok && SetWindowPos(hwnd, icons, 0, 0, 0, 0, flags);
+        _lastOrderCheck = $"{before} at {DateTime.Now:T}: {(ok ? "repositioned" : $"failed ({Marshal.GetLastWin32Error()})")}";
+        if (ok) _orderRepairs++;
     }
 
     private static void ApplyMode(Window window, nint hwnd)
     {
-        // Always keep WPF hardware-accelerated DirectX pipeline enabled (RenderMode.Default).
-        // Never set WS_EX_LAYERED on a child inside WS_EX_NOREDIRECTIONBITMAP Progman, because
-        // DWM does not composite GDI/layered surfaces inside a non-redirected parent.
+        // AllowsTransparency asks WPF itself to create and present a layered HWND.
+        // Do not mix its per-pixel updates with SetLayeredWindowAttributes.
         if (HwndSource.FromHwnd(hwnd)?.CompositionTarget is HwndTarget target)
             target.RenderMode = RenderMode.Default;
 
@@ -189,7 +202,7 @@ public static class DesktopWallpaperHost
             SetWindowLongPtr(hwnd, GwlStyle, (style & ~WsChild) | WsPopup | WsVisible);
 
             var exStyle = GetWindowLongPtr(hwnd, GwlExStyle);
-            SetWindowLongPtr(hwnd, GwlExStyle, exStyle & ~(WsExNoActivate | WsExLayered));
+            SetWindowLongPtr(hwnd, GwlExStyle, exStyle & ~WsExNoActivate);
 
             window.WindowState = WindowState.Normal;
             window.Left = 120;
@@ -201,7 +214,6 @@ public static class DesktopWallpaperHost
             window.Activate();
 
             ModeDescription = "Floating Window";
-            SystemParametersInfo(SpiSetDeskWallpaper, 0, null, SpifSendChange);
             return;
         }
 
@@ -220,9 +232,11 @@ public static class DesktopWallpaperHost
                 return;
             }
 
-            // Spawn WorkerW behind SHELLDLL_DefView
-            SendMessageTimeout(progman, WmSpawnWorker, 0xD, 0x1, 0, 1000, out _);
-            SendMessageTimeout(progman, WmSpawnWorker, 0, 0, 0, 1000, out _);
+            // On a raised desktop these planes usually already exist. Requesting them
+            // again on every mode switch can disturb the very order we are establishing.
+            if (FindWindowEx(progman, 0, "WorkerW", null) == 0 ||
+                FindWindowEx(progman, 0, "SHELLDLL_DefView", null) == 0)
+                SendMessageTimeout(progman, WmSpawnWorker, 0xD, 0x1, 2, 1000, out _);
 
             int physW = Math.Max(640, GetSystemMetrics(SmCxVirtualScreen));
             int physH = Math.Max(480, GetSystemMetrics(SmCyVirtualScreen));
@@ -238,53 +252,75 @@ public static class DesktopWallpaperHost
             SetWindowLongPtr(hwnd, GwlStyle, (style & ~WsPopup) | WsChild | WsClipSiblings | WsVisible);
 
             var exStyle = GetWindowLongPtr(hwnd, GwlExStyle);
-            // Strip WS_EX_LAYERED so DWM composites WPF's DirectX SwapChain directly inside Progman!
-            SetWindowLongPtr(hwnd, GwlExStyle, (exStyle & ~(WsExAppWindow | WsExLayered)) | WsExNoActivate | WsExToolWindow);
+            SetWindowLongPtr(hwnd, GwlExStyle, (exStyle & ~WsExAppWindow) | WsExNoActivate | WsExToolWindow);
 
-            // Windows 11 24H2+: SHELLDLL_DefView is a direct child of Progman
             var shellDefView = FindWindowEx(progman, 0, "SHELLDLL_DefView", null);
-            if (shellDefView != 0)
+            bool raised = shellDefView != 0 && (GetWindowLongPtr(progman, GwlExStyle) & WsExNoRedirectionBitmap) != 0;
+            if (raised)
             {
+                if ((GetWindowLongPtr(hwnd, GwlExStyle) & WsExLayered) == 0)
+                    throw new InvalidOperationException("WPF did not create a layered window.");
                 SetParent(hwnd, progman);
-                // Insert immediately AFTER SHELLDLL_DefView (behind desktop icons) and BEFORE WorkerW (static wallpaper)
-                SetWindowPos(hwnd, shellDefView, 0, 0, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged);
-
-                var workerW = FindWindowEx(progman, 0, "WorkerW", null);
-                if (workerW != 0 && workerW != hwnd)
-                    SetWindowPos(workerW, hwnd, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
-
-                bool is24H2 = (GetWindowLongPtr(progman, GwlExStyle) & WsExNoRedirectionBitmap) != 0;
-                ModeDescription = $"{(is24H2 ? "Win11 24H2+ Progman" : "Win11 Progman")} ({physW}x{physH})";
+                int error = Marshal.GetLastWin32Error();
+                if (GetParent(hwnd) != progman)
+                    throw new System.ComponentModel.Win32Exception(error, $"Raised desktop SetParent failed ({error}).");
+                if (!SetWindowPos(hwnd, shellDefView, 0, 0, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                ModeDescription = $"Raised desktop / layered WPF ({physW}x{physH})";
                 return;
             }
-
-            // Windows 10 / Windows 11 23H2 and earlier: WorkerW is a top-level sibling after SHELLDLL_DefView's WorkerW
-            nint legacyWorkerW = 0;
-            EnumWindows((topHandle, _) =>
+            nint worker = 0;
+            if (shellDefView != 0)
             {
-                if (FindWindowEx(topHandle, 0, "SHELLDLL_DefView", null) == 0)
-                    return true;
-
-                legacyWorkerW = FindWindowEx(0, topHandle, "WorkerW", null);
-                return legacyWorkerW == 0;
-            }, 0);
-
-            if (legacyWorkerW != 0)
-            {
-                SetParent(hwnd, legacyWorkerW);
-                SetWindowPos(hwnd, 0, 0, 0, physW, physH, SwpNoZOrder | SwpNoActivate | SwpShowWindow | SwpFrameChanged);
-                ModeDescription = $"Win10 WorkerW ({physW}x{physH})";
+                var candidate = FindWindowEx(progman, shellDefView, "WorkerW", null);
+                if (UsableWorker(candidate, progman)) worker = candidate;
             }
-            else
-            {
-                PinToBottom(window, hwnd);
-            }
+
+            // Classic desktop: find the background sibling below the icon host.
+            if (worker == 0)
+                EnumWindows((topHandle, _) =>
+                {
+                    if (FindWindowEx(topHandle, 0, "SHELLDLL_DefView", null) == 0) return true;
+                    var candidate = FindWindowEx(0, topHandle, "WorkerW", null);
+                    if (UsableWorker(candidate, progman)) worker = candidate;
+                    return worker == 0;
+                }, 0);
+
+            if (worker == 0 || !GetClientRect(worker, out var bounds))
+                throw new InvalidOperationException("No visible desktop-sized background WorkerW found.");
+
+            physW = bounds.Right - bounds.Left;
+            physH = bounds.Bottom - bounds.Top;
+            SetParent(hwnd, worker);
+            int parentError = Marshal.GetLastWin32Error();
+            if (GetParent(hwnd) != worker)
+                throw new System.ComponentModel.Win32Exception(parentError, $"SetParent failed ({parentError}).");
+            SyncWpfLogicalSize(window, physW, physH);
+            if (!SetWindowPos(hwnd, 0, 0, 0, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged))
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            ModeDescription = $"Desktop WorkerW 0x{worker:X} ({physW}x{physH})";
         }
         catch (Exception ex)
         {
             App.LogCrash("ApplyMode", ex);
             PinToBottom(window, hwnd);
+            ModeDescription += $" (Auto attach failed: {ex.Message})";
         }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(nint hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hwnd, out uint processId);
+
+    private static bool UsableWorker(nint candidate, nint progman)
+    {
+        if (candidate == 0 || !IsWindowVisible(candidate)) return false;
+        GetWindowThreadProcessId(candidate, out var pid);
+        GetWindowThreadProcessId(progman, out var shellPid);
+        return pid != 0 && pid == shellPid && FindWindowEx(candidate, 0, "SHELLDLL_DefView", null) == 0
+            && GetClientRect(candidate, out var r) && r.Right > 100 && r.Bottom > 100;
     }
 
     private static void PinToBottom(Window window, nint hwnd)
@@ -301,7 +337,7 @@ public static class DesktopWallpaperHost
         SetWindowLongPtr(hwnd, GwlStyle, (style & ~WsChild) | WsPopup | WsVisible);
 
         var exStyle = GetWindowLongPtr(hwnd, GwlExStyle);
-        SetWindowLongPtr(hwnd, GwlExStyle, (exStyle & ~(WsExAppWindow | WsExLayered)) | WsExNoActivate | WsExToolWindow);
+        SetWindowLongPtr(hwnd, GwlExStyle, (exStyle & ~WsExAppWindow) | WsExNoActivate | WsExToolWindow);
 
         SetWindowPos(hwnd, HwndBottom, physX, physY, physW, physH, SwpNoActivate | SwpShowWindow | SwpFrameChanged);
         ModeDescription = $"Bottom-Most Desktop Layer ({physW}x{physH})";
@@ -326,15 +362,19 @@ public static class DesktopWallpaperHost
 
         var sb = new StringBuilder();
         sb.AppendLine($"Mode: {ModeDescription}");
+        sb.AppendLine($"Z-order repairs: {_orderRepairs} | Last drift: {_lastOrderCheck}");
+        sb.AppendLine($"Layered: {(GetWindowLongPtr(hwnd, GwlExStyle) & WsExLayered) != 0} | Visible: {IsWindowVisible(hwnd)}");
+        if (window is MainWindow main) sb.AppendLine($"WPF render callbacks: {main.RenderFrameCount}");
         sb.AppendLine($"Our HWND: 0x{hwnd:X} | Parent: 0x{GetParent(hwnd):X}");
         sb.AppendLine($"Our Rect: ({rc.Left}, {rc.Top}) - ({rc.Right}, {rc.Bottom}) [{rc.Right - rc.Left}x{rc.Bottom - rc.Top}]");
         sb.AppendLine($"Progman: 0x{progman:X} | ExStyle: 0x{GetWindowLongPtr(progman, GwlExStyle):X}");
         sb.AppendLine($"Progman->SHELLDLL_DefView: 0x{defView:X} | Progman->WorkerW: 0x{workerW:X}");
         if (progman != 0)
         {
-            sb.AppendLine("Progman Children (top-to-bottom Z-order):");
+            sb.AppendLine("Progman direct children (top-to-bottom Z-order):");
             EnumChildWindows(progman, (child, _) =>
             {
+                if (GetParent(child) != progman) return true;
                 var cls = new StringBuilder(64);
                 GetClassName(child, cls, cls.Capacity);
                 GetWindowRect(child, out var crc);

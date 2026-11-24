@@ -75,8 +75,11 @@ public partial class MainWindow : Window
         };
     }
 
+    internal long RenderFrameCount { get; private set; }
+
     private void OnRenderFrame(object? sender, EventArgs e)
     {
+        RenderFrameCount++;
         if (ActualWidth < 100 || ActualHeight < 100) return;
 
         _audio.StepFrame();
