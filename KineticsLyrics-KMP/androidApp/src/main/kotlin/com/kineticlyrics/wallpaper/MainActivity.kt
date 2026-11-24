@@ -67,7 +67,7 @@ class MainActivity : Activity() {
         addButton(root, "3. Set as Live Wallpaper", accent = true) {
             val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
                 putExtra(
-                    WallpaperManager.ExtraLiveWallpaperComponent,
+                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
                     ComponentName(this@MainActivity, KineticWallpaperService::class.java)
                 )
             }
