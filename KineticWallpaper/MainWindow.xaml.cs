@@ -602,6 +602,10 @@ public partial class MainWindow : Window
         modeMenu.DropDownItems.AddRange([modeAuto, modeBottom, modeFloat]);
         menu.Items.Add(modeMenu);
 
+        var software = new Forms.ToolStripMenuItem("Use WPF Software Rendering (Test)") { CheckOnClick = true };
+        software.CheckedChanged += (_, _) => Dispatcher.Invoke(() => DesktopWallpaperHost.SetSoftwareRendering(this, software.Checked));
+        menu.Items.Add(software);
+
         menu.Items.Add("Show Desktop Diagnostics…", null, (_, _) =>
         {
             var info = Dispatcher.Invoke(() => DesktopWallpaperHost.GetDiagnostics(this));

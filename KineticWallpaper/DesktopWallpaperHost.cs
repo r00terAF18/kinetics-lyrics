@@ -99,7 +99,7 @@ public static class DesktopWallpaperHost
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string? pvParam, uint fWinIni);
 
-    private static string _lastOrderCheck = "Not sampled";
+    private static string _lastOrderCheck = "None recorded";
     private static int _orderRepairs;
     private static DispatcherTimer? _watchdog;
     public static DesktopAttachMode CurrentMode { get; private set; } = DesktopAttachMode.AutoShell;
@@ -188,12 +188,21 @@ public static class DesktopWallpaperHost
         if (ok) _orderRepairs++;
     }
 
+    private static bool _software;
+    public static void SetSoftwareRendering(Window window, bool enabled)
+    {
+        _software = enabled;
+        if (PresentationSource.FromVisual(window)?.CompositionTarget is HwndTarget target)
+            target.RenderMode = enabled ? RenderMode.SoftwareOnly : RenderMode.Default;
+        window.InvalidateVisual();
+    }
+
     private static void ApplyMode(Window window, nint hwnd)
     {
         // AllowsTransparency asks WPF itself to create and present a layered HWND.
         // Do not mix its per-pixel updates with SetLayeredWindowAttributes.
         if (HwndSource.FromHwnd(hwnd)?.CompositionTarget is HwndTarget target)
-            target.RenderMode = RenderMode.Default;
+            target.RenderMode = _software ? RenderMode.SoftwareOnly : RenderMode.Default;
 
         if (CurrentMode == DesktopAttachMode.FloatingWindow)
         {
@@ -362,6 +371,7 @@ public static class DesktopWallpaperHost
 
         var sb = new StringBuilder();
         sb.AppendLine($"Mode: {ModeDescription}");
+        if (HwndSource.FromHwnd(hwnd)?.CompositionTarget is HwndTarget t) sb.AppendLine($"WPF render mode: {t.RenderMode}");
         sb.AppendLine($"Z-order repairs: {_orderRepairs} | Last drift: {_lastOrderCheck}");
         sb.AppendLine($"Layered: {(GetWindowLongPtr(hwnd, GwlExStyle) & WsExLayered) != 0} | Visible: {IsWindowVisible(hwnd)}");
         if (window is MainWindow main) sb.AppendLine($"WPF render callbacks: {main.RenderFrameCount}");
