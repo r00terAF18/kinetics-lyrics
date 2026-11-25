@@ -13,17 +13,6 @@ kotlin {
         }
     }
 
-    jvm("desktop") {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "21"
-            }
-        }
-    }
-
-    macosArm64()
-    macosX64()
-
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -38,22 +27,6 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
             }
         }
-        val desktopMain by getting {
-            dependencies {
-                implementation(libs.kotlinx.coroutines.swing)
-                implementation(libs.ktor.client.okhttp)
-                implementation(libs.jna.platform)
-                implementation(libs.jtransforms)
-            }
-        }
-        val macosMain by creating {
-            dependsOn(commonMain)
-            dependencies {
-                implementation(libs.ktor.client.darwin)
-            }
-        }
-        val macosArm64Main by getting { dependsOn(macosMain) }
-        val macosX64Main by getting { dependsOn(macosMain) }
     }
 }
 

@@ -2,7 +2,7 @@ package com.kineticlyrics.shared
 
 object BridgeScript {
     /**
-     * Injected into WebView2 (Windows), WKWebView (macOS), and Android WebView before index.html runs.
+     * Injected into Android WebView before index.html runs.
      * Exposes the exact Wallpaper Engine media/audio/property listener API expected by index.html.
      */
     const val JS = """
