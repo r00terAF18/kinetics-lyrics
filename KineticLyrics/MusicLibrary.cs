@@ -67,6 +67,17 @@ public sealed class MusicLibrary : IDisposable
         Console.WriteLine($"Scan finished: {scanned} audio files, {changed} updated, {errors} skipped.");
     }
 
+    public void RemoveFolder(string folder)
+    {
+        var prefix = System.IO.Path.GetFullPath(folder)
+            .TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+            + System.IO.Path.DirectorySeparatorChar;
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = "DELETE FROM tracks WHERE substr(path, 1, length($prefix)) COLLATE NOCASE = $prefix";
+        cmd.Parameters.AddWithValue("$prefix", prefix);
+        cmd.ExecuteNonQuery();
+    }
+
     private static string Normalize(string s) => Regex.Replace(s.ToLowerInvariant(), @"[^\p{L}\p{N}]+", " ").Trim();
 
     public Track? Match(string title, string artist, string album, double duration)

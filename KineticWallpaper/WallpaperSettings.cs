@@ -31,6 +31,7 @@ public sealed class WallpaperSettings
     public bool Clock24 { get; set; } = true;
     public bool LowPower { get; set; } = false;
     public string TargetMonitor { get; set; } = "PRIMARY";
+    public string DisplayMode { get; set; } = "auto";
     public string Monitors { get; set; } = "";
     public int TargetFps { get; set; } = 60;
     public List<string> MusicFolders { get; set; } = [];

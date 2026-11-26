@@ -137,6 +137,10 @@ public partial class MainWindow : Window
     private readonly WallpaperSettings _settings;
     private readonly DispatcherTimer _bridgeTimer;
     private Forms.NotifyIcon? _trayIcon;
+    private HudMouseForwarder? _hudMouseForwarder;
+    private SettingsWindow? _settingsWindow;
+    private Action? _refreshMonitorMenu;
+    private Action? _refreshDisplayModeMenu;
 
     private bool _webReady;
     private string _lastTrackSig = "";
@@ -212,6 +216,20 @@ public partial class MainWindow : Window
             WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
             WebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
 
+            _hudMouseForwarder = new HudMouseForwarder(WebView.CoreWebView2, DesktopWallpaperHost.GetTargetScreenRect);
+            WebView.CoreWebView2.WebMessageReceived += (_, args) =>
+            {
+                try
+                {
+                    using var message = JsonDocument.Parse(args.WebMessageAsJson);
+                    var root = message.RootElement;
+                    if (root.TryGetProperty("type", out var type) && type.GetString() == "hudBounds" &&
+                        root.TryGetProperty("data", out var data))
+                        _hudMouseForwarder?.UpdateBounds(data);
+                }
+                catch (JsonException) { }
+            };
+
             await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BridgeScript);
 
             var webContentDir = Path.Combine(AppContext.BaseDirectory, "WebContent");
@@ -225,6 +243,7 @@ public partial class MainWindow : Window
                 if (args.IsSuccess)
                 {
                     _webReady = true;
+                    UpdateHudMouseForwarding();
                     PostWebMessage("fps", _settings.TargetFps);
                     PushSettings();
                 }
@@ -233,7 +252,8 @@ public partial class MainWindow : Window
             WebView.CoreWebView2.Navigate("https://kineticlyrics.local/index.html");
 
             DesktopWallpaperHost.TargetMonitorDeviceName = _settings.ResolveTargetDeviceName();
-            DesktopWallpaperHost.Attach(this, DesktopAttachMode.AutoShell);
+            DesktopWallpaperHost.Attach(this, ParseDisplayMode(_settings.DisplayMode));
+            UpdateHudMouseForwarding();
 
             _audio.Start();
             _ = Task.Run(() => _monitor.RunAsync(_cts.Token));
@@ -329,11 +349,80 @@ public partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _settingsWindow?.Close();
+        _hudMouseForwarder?.Dispose();
         _bridgeTimer.Stop();
         _cts.Cancel();
         _audio.Dispose();
         _library?.Dispose();
         _trayIcon?.Dispose();
+    }
+
+    private void UpdateHudMouseForwarding()
+    {
+        _hudMouseForwarder?.SetEnabled(
+            _webReady && DesktopWallpaperHost.CurrentMode != DesktopAttachMode.FloatingWindow);
+    }
+
+    private static DesktopAttachMode ParseDisplayMode(string? mode) => mode switch
+    {
+        "bottom" => DesktopAttachMode.BottomMostWindow,
+        "floating" => DesktopAttachMode.FloatingWindow,
+        _ => DesktopAttachMode.AutoShell
+    };
+
+    private static string ToDisplayMode(DesktopAttachMode mode) => mode switch
+    {
+        DesktopAttachMode.BottomMostWindow => "bottom",
+        DesktopAttachMode.FloatingWindow => "floating",
+        _ => "auto"
+    };
+
+    private void OpenSettingsWindow()
+    {
+        if (_settingsWindow is not null)
+        {
+            if (_settingsWindow.WindowState == WindowState.Minimized)
+                _settingsWindow.WindowState = WindowState.Normal;
+            if (!_settingsWindow.IsVisible)
+                _settingsWindow.Show();
+            _settingsWindow.Activate();
+            return;
+        }
+
+        _settingsWindow = new SettingsWindow(_settings, ApplySettingsFromWindow);
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        _settingsWindow.Show();
+    }
+
+    private void ApplySettingsFromWindow(IReadOnlyList<string> addedFolders, IReadOnlyList<string> removedFolders)
+    {
+        DesktopWallpaperHost.TargetMonitorDeviceName = _settings.ResolveTargetDeviceName();
+        DesktopWallpaperHost.SetMode(this, ParseDisplayMode(_settings.DisplayMode));
+        UpdateHudMouseForwarding();
+        _refreshMonitorMenu?.Invoke();
+        _refreshDisplayModeMenu?.Invoke();
+        PostWebMessage("fps", _settings.TargetFps);
+        PushSettings();
+
+        var library = _library;
+        if (library is not null && (addedFolders.Count > 0 || removedFolders.Count > 0))
+        {
+            var foldersToScan = _settings.MusicFolders.ToArray();
+            _ = Task.Run(() =>
+            {
+                foreach (var folder in removedFolders)
+                {
+                    try { library.RemoveFolder(folder); }
+                    catch (Exception ex) { App.LogCrash("RemoveMusicFolder", ex); }
+                }
+                foreach (var folder in foldersToScan.Where(Directory.Exists))
+                {
+                    try { library.Scan(folder); }
+                    catch (Exception ex) { App.LogCrash("ScanMusicFolder", ex); }
+                }
+            });
+        }
     }
 
     private void SetupTrayIcon()
@@ -344,8 +433,12 @@ public partial class MainWindow : Window
             Text = "Kinetic Lyrics Wallpaper",
             Visible = true
         };
+        _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(OpenSettingsWindow);
 
         var menu = new Forms.ContextMenuStrip();
+
+        menu.Items.Add("Settings…", null, (_, _) => Dispatcher.Invoke(OpenSettingsWindow));
+        menu.Items.Add(new Forms.ToolStripSeparator());
 
         // Monitor Selection submenu
         var monitorMenu = new Forms.ToolStripMenuItem("Monitor");
@@ -386,6 +479,8 @@ public partial class MainWindow : Window
             }
         }
 
+        _refreshMonitorMenu = RebuildMonitorMenu;
+
         void SelectMonitor(string target)
         {
             _settings.TargetMonitor = target;
@@ -404,16 +499,29 @@ public partial class MainWindow : Window
 
         // Display Mode submenu
         var modeMenu = new Forms.ToolStripMenuItem("Display Mode");
-        var modeAuto = new Forms.ToolStripMenuItem("Behind Desktop Icons (Auto)") { Checked = true };
-        var modeBottom = new Forms.ToolStripMenuItem("Bottom-Most Desktop Window");
-        var modeFloat = new Forms.ToolStripMenuItem("Floating Window (Preview)");
+        var modeAuto = new Forms.ToolStripMenuItem("Behind Desktop Icons (Auto)") { Checked = _settings.DisplayMode == "auto" };
+        var modeBottom = new Forms.ToolStripMenuItem("Bottom-Most Desktop Window") { Checked = _settings.DisplayMode == "bottom" };
+        var modeFloat = new Forms.ToolStripMenuItem("Floating Window (Preview)") { Checked = _settings.DisplayMode == "floating" };
+
+        void RefreshDisplayModeMenu()
+        {
+            modeAuto.Checked = _settings.DisplayMode == "auto";
+            modeBottom.Checked = _settings.DisplayMode == "bottom";
+            modeFloat.Checked = _settings.DisplayMode == "floating";
+        }
+
+        _refreshDisplayModeMenu = RefreshDisplayModeMenu;
 
         void SelectMode(DesktopAttachMode m)
         {
-            modeAuto.Checked = m == DesktopAttachMode.AutoShell;
-            modeBottom.Checked = m == DesktopAttachMode.BottomMostWindow;
-            modeFloat.Checked = m == DesktopAttachMode.FloatingWindow;
-            Dispatcher.Invoke(() => DesktopWallpaperHost.SetMode(this, m));
+            _settings.DisplayMode = ToDisplayMode(m);
+            _settings.Save();
+            RefreshDisplayModeMenu();
+            Dispatcher.Invoke(() =>
+            {
+                DesktopWallpaperHost.SetMode(this, m);
+                UpdateHudMouseForwarding();
+            });
         }
 
         modeAuto.Click += (_, _) => SelectMode(DesktopAttachMode.AutoShell);
@@ -509,7 +617,9 @@ public partial class MainWindow : Window
             ("Minimal", "minimal"),
             ("Calm", "calm"),
             ("Hype", "hype"),
-            ("Chaos", "chaos")
+            ("Chaos", "chaos"),
+            ("Synthwave", "synthwave"),
+            ("Cyberpunk", "cyberpunk")
         })
         {
             var item = new Forms.ToolStripMenuItem(label) { Checked = _settings.Preset == val };

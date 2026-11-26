@@ -14,7 +14,7 @@ html.inv #gpu-wrap,html.inv #hud,html.inv #clk,html.inv #dbg{filter:invert(1) hu
 #gpu-wrap canvas{display:block;width:100%!important;height:100%!important}
 
 #hud{position:fixed;inset:0;pointer-events:none;z-index:20}
-#hud #sync{pointer-events:auto;z-index:21}
+#hud #sync,#hud #style-bar{pointer-events:auto;z-index:21}
 
 #info{position:absolute;left:calc(var(--rw,100vw)*.032);bottom:calc(var(--rh,100vh)*(.036 + var(--hudlift,0)));display:flex;align-items:center;gap:14px;font-family:"Segoe UI Variable Text","Segoe UI",sans-serif;opacity:.88;transition:opacity .4s}
 #art{width:54px;height:54px;border-radius:6px;object-fit:cover;background:#1a1a22;box-shadow:0 6px 24px rgba(0,0,0,.55)}
@@ -23,26 +23,43 @@ html.inv #gpu-wrap,html.inv #hud,html.inv #clk,html.inv #dbg{filter:invert(1) hu
 #bar{width:180px;height:2px;background:rgba(255,255,255,.16);margin-top:8px;border-radius:2px;overflow:hidden}
 #bar i{display:block;height:100%;width:100%;transform-origin:0 50%;transform:scaleX(0);background:var(--accent);will-change:transform}
 
+#style-bar{position:absolute;right:calc(var(--rw,100vw)*.032);bottom:calc(var(--rh,100vh)*(.036 + var(--hudlift,0)) + 52px);display:flex;gap:6px;align-items:center;font:12px Consolas,monospace;opacity:.8;transition:opacity .2s}
+#style-bar:hover{opacity:1}
+#style-bar button,#sync button{background:rgba(255,255,255,.08);color:var(--text);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:4px 8px;font:inherit;cursor:pointer;transition:all .15s}
+#style-bar button:hover,#sync button:hover{border-color:var(--accent);color:var(--accent)}
+#style-bar button.active{border-color:var(--accent);background:rgba(255,255,255,.16);color:#fff;box-shadow:0 0 10px var(--accent)}
+
 #sync{position:absolute;right:calc(var(--rw,100vw)*.032);bottom:calc(var(--rh,100vh)*(.036 + var(--hudlift,0)) + 22px);display:flex;gap:6px;align-items:center;font:12px Consolas,monospace;opacity:.8;transition:opacity .2s}
 #sync:hover{opacity:1}
-#sync button{background:rgba(255,255,255,.08);color:var(--text);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:4px 8px;font:inherit;cursor:pointer}
-#sync button:hover{border-color:var(--accent);color:var(--accent)}
 #nv{min-width:52px;text-align:center}
 #status{position:absolute;right:calc(var(--rw,100vw)*.032);bottom:calc(var(--rh,100vh)*(.036 + var(--hudlift,0)));font:12px Consolas,monospace;letter-spacing:.2em;text-transform:uppercase;opacity:.48}
+
+/* Theme-specific HUD polish */
+body[data-style="synthwave"] #art{border:1px solid #ff2a85;box-shadow:0 0 18px rgba(255,42,133,.55)}
+body[data-style="synthwave"] #t{font-family:"Trebuchet MS",Impact,sans-serif;letter-spacing:1.5px;text-transform:uppercase;text-shadow:0 0 8px #ff2a85}
+body[data-style="synthwave"] #bar i{box-shadow:0 0 8px #00f0ff}
+
+body[data-style="cyberpunk"] #art{border-radius:0;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);border:1px solid #fcee09}
+body[data-style="cyberpunk"] #t{font-family:Consolas,"Cascadia Mono",monospace;letter-spacing:2px;text-transform:uppercase;color:#fcee09}
+body[data-style="cyberpunk"] #style-bar button,body[data-style="cyberpunk"] #sync button{border-radius:0;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
 
 #dbg{position:fixed;inset:0;pointer-events:none;display:none;z-index:8}
 #dbg div{position:absolute;outline:2px dashed #00e5ff;outline-offset:-2px;color:#00e5ff;font:600 18px Consolas,monospace;padding:12px}
 #dbg .scene{outline-color:#ffd400;color:#ffd400;text-align:right}
 #clk{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);display:none;font:600 22px Consolas,monospace;color:#ffd400;background:rgba(0,0,0,.78);padding:14px 20px;border-radius:6px;white-space:pre;z-index:9}
 </style>
-<!-- GPU Rendering (PixiJS v8 WebGPU/WebGL2) & Hardware Tween Engine (GSAP 3) -->
 <script src="pixi.min.js"></script>
 <script src="gsap.min.js"></script>
 </head>
-<body>
+<body data-style="default">
 <div id="gpu-wrap"></div>
 <div id="hud">
   <div id="info"><img id="art" alt=""><div><div id="t"></div><div id="a"></div><div id="bar"><i></i></div></div></div>
+  <div id="style-bar" role="group" aria-label="Visual Style">
+    <button data-st="default" class="active">DEFAULT</button>
+    <button data-st="synthwave">SYNTHWAVE</button>
+    <button data-st="cyberpunk">CYBERPUNK</button>
+  </div>
   <div id="sync" role="group" aria-label="Lyrics timing controls">
     <button data-d="0.1" title="show lyrics earlier">« earlier</button>
     <span id="nv">0.00s</span>
@@ -62,7 +79,7 @@ let W=1920,H=1080;
 const S={
   title:'',artist:'',album:'',playing:false,basePos:0,baseT:performance.now(),dur:0,offset:0,
   lines:[],idx:-99,reqId:0,beat:0,beatS:0,autoAccent:true,manualAccent:'#ff4d6d',
-  accentHex:0xff4d6d,accentCss:'#ff4d6d',textHex:0xf4f1ea,
+  accentHex:0xff4d6d,accentCss:'#ff4d6d',textHex:0xf4f1ea,visualStyle:'default',
   lastComp:'',cur:null,cache:new Map(),
   layout:'auto',theme:'mixed',chaos:.35,carry:true,camMode:'auto',camAmt:50,
   bgMode:'art',dim:.55,low:false,choreo:true,moodOn:true,lfmKey:'',
@@ -75,6 +92,42 @@ const S={
 try{const b=parseFloat(localStorage.getItem('kl:snapBias'));if(isFinite(b))S.snapBias=b}catch(e){}
 const SY={key:'',on:[],prev:0,avg:.02,last:-1,auto:0,nudge:0,lastCalc:0,enabled:false,flashT:0};
 const AU={low:0,mid:0,high:0,tot:0,lowA:.3,highA:.3,totA:.3,totSlow:.3,flat:0,lastKick:0,lastHat:0,lastDrop:0,dist:0,vocal:0,ev:{kick:0,hat:0,drop:0},cnt:{kick:0,hat:0,drop:0}};
+
+/* ---------- Visual Style Profiles ---------- */
+const STYLES={
+  default:{
+    bgHex:0x08080b,
+    textHex:0xf4f1ea,
+    accent:'#ff4d6d',
+    palHex:[0xff4d6d,0x3b82f6,0x8b5cf6,0xff4d6d],
+    fonts:['f-cond','f-black','f-impact','f-serif','f-mono'],
+    transitions:['slam','drop','zoom','spin','fade','wipe','rise','pop','gravity','collide','flip','swing','stretch','squash','rubber','skew','fly','orbit','split','iris','cascade','wave'],
+    glow:false,
+    chromatic:false
+  },
+  synthwave:{
+    bgHex:0x0d0221,
+    textHex:0x00f0ff,
+    accent:'#ff2a85',
+    secondaryHex:0xffbe0b,
+    palHex:[0xff2a85,0x7b2cbf,0x00f0ff,0xffbe0b],
+    fonts:['f-synth','f-chrome','f-impact','f-cond'],
+    transitions:['horizon','vhs-tracking','laser-wipe','zoom','rise','wave','echo','orbit'],
+    glow:true,
+    chromatic:false
+  },
+  cyberpunk:{
+    bgHex:0x05070a,
+    textHex:0xfcee09,
+    accent:'#00f0ff',
+    secondaryHex:0xff003c,
+    palHex:[0xfcee09,0x00f0ff,0xff003c,0x14f195],
+    fonts:['f-cyber','f-mono','f-black','f-impact'],
+    transitions:['glitch-snap','rgb-split','slam','collide','skew','stretch','fly','pop'],
+    glow:true,
+    chromatic:true
+  }
+};
 
 let RNG=null;const RR=()=>RNG?RNG():Math.random();
 const FONT_W={calm:{'f-serif':3,'f-mono':2,'f-cond':2,'f-black':.6,'f-impact':.3},intense:{'f-impact':3,'f-black':2.5,'f-cond':2,'f-serif':.4,'f-mono':.5}};
@@ -94,10 +147,12 @@ const pos=()=>rawPos()+S.offset/1000+SY.nudge+(SY.enabled?SY.auto:0);
 const GPU={
   app:null,ready:false,
   bgContainer:null,bgSprite:null,bgSolid:null,blobSprites:[],
+  themeLayer:null,synthSun:null,synthGrid:null,cyberHud:null,scanlines:null,
   dimGfx:null,lightSprite:null,tickerText:null,
   cameraContainer:null,worldContainer:null,stageContainer:null,
   blurFilter:null,activeGroup:null,parkedGroups:[],
-  lightX:960,lightY:540,lightTargetX:960,lightTargetY:540,lightAlpha:.22,lightScale:1
+  lightX:960,lightY:540,lightTargetX:960,lightTargetY:540,lightAlpha:.22,lightScale:1,
+  gridScroll:0,glitchTimer:0
 };
 
 function cssToHex(css){
@@ -122,6 +177,40 @@ function makeRadialTexture(size,r,g,b){
   grd.addColorStop(0.5,`rgba(${r},${g},${b},0.24)`);
   grd.addColorStop(0.82,`rgba(${r},${g},${b},0)`);
   ctx.fillStyle=grd;ctx.fillRect(0,0,size,size);
+  return PIXI.Texture.from(cv);
+}
+
+function makeSynthSunTexture(size){
+  const cv=document.createElement('canvas');cv.width=cv.height=size;
+  const ctx=cv.getContext('2d'),half=size/2,rad=size*0.44;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(half,half,rad,0,Math.PI*2);
+  ctx.clip();
+  const grd=ctx.createLinearGradient(0,half-rad,0,half+rad);
+  grd.addColorStop(0,'#fff01f');
+  grd.addColorStop(0.45,'#ff7b00');
+  grd.addColorStop(0.85,'#ff007f');
+  grd.addColorStop(1,'#8a00d4');
+  ctx.fillStyle=grd;
+  ctx.fillRect(0,0,size,size);
+  // Horizontal outrun cutout bands on lower half
+  ctx.globalCompositeOperation='destination-out';
+  for(let i=0;i<7;i++){
+    const t=i/6;
+    const y=half+rad*(0.08+t*0.86);
+    const h=Math.max(2,size*(0.006+t*0.026));
+    ctx.fillRect(0,y,size,h);
+  }
+  ctx.restore();
+  return PIXI.Texture.from(cv);
+}
+
+function makeScanlineTexture(){
+  const cv=document.createElement('canvas');cv.width=4;cv.height=4;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,0.28)';
+  ctx.fillRect(0,0,4,2);
   return PIXI.Texture.from(cv);
 }
 
@@ -152,7 +241,6 @@ async function initGpu(){
   }
   GPU.bgContainer.addChild(GPU.bgSprite);
 
-  // Flowing animated color blobs (GPU sprites with additive blend)
   for(let i=0;i<4;i++){
     const sp=new PIXI.Sprite(makeRadialTexture(256,255,77,109));
     sp.anchor.set(0.5);sp.alpha=0;sp.blendMode='add';
@@ -161,6 +249,20 @@ async function initGpu(){
   }
 
   GPU.dimGfx=new PIXI.Graphics();
+
+  // Dedicated procedural theme layer (Synthwave Sun/Grid & Cyberpunk HUD/Scanlines)
+  GPU.themeLayer=new PIXI.Container();
+  GPU.synthSun=new PIXI.Sprite(makeSynthSunTexture(512));
+  GPU.synthSun.anchor.set(0.5);
+  GPU.synthSun.visible=false;
+  GPU.synthGrid=new PIXI.Graphics();
+  GPU.synthGrid.visible=false;
+  GPU.cyberHud=new PIXI.Graphics();
+  GPU.cyberHud.visible=false;
+  GPU.scanlines=new PIXI.TilingSprite({texture:makeScanlineTexture(),width:1920,height:1080});
+  GPU.scanlines.visible=false;
+  GPU.themeLayer.addChild(GPU.synthSun,GPU.synthGrid,GPU.cyberHud,GPU.scanlines);
+
   GPU.lightSprite=new PIXI.Sprite(makeRadialTexture(512,255,77,109));
   GPU.lightSprite.anchor.set(0.5);
   GPU.lightSprite.blendMode='add';
@@ -187,6 +289,7 @@ async function initGpu(){
 
   app.stage.addChild(GPU.bgContainer);
   app.stage.addChild(GPU.dimGfx);
+  app.stage.addChild(GPU.themeLayer);
   app.stage.addChild(GPU.lightSprite);
   app.stage.addChild(GPU.tickerText);
   app.stage.addChild(GPU.cameraContainer);
@@ -197,15 +300,62 @@ async function initGpu(){
   app.ticker.add(onGpuTick);
 }
 
+function drawSynthwaveGrid(cw,ch,scroll){
+  const g=GPU.synthGrid;
+  g.clear();
+  const hy=ch*0.58;
+  // Horizon glow band
+  g.rect(0,hy-3,cw,6).fill({color:0xff2a85,alpha:0.75});
+  g.rect(0,hy,cw,ch-hy).fill({color:0x090118,alpha:0.78});
+
+  // Perspective vertical laser rays
+  const cols=18;
+  for(let i=-cols;i<=cols;i++){
+    const topX=cw*0.5+i*(cw*0.032);
+    const botX=cw*0.5+i*(cw*0.16);
+    g.moveTo(topX,hy).lineTo(botX,ch).stroke({color:0x00f0ff,width:1.5,alpha:0.42});
+  }
+  // Exponentially spaced horizontal scan lines scrolling toward viewer
+  const rows=14;
+  for(let r=0;r<rows;r++){
+    const phase=((r+scroll)%rows)/rows;
+    const y=hy+Math.pow(phase,2.15)*(ch-hy);
+    const alpha=0.12+phase*0.55;
+    g.moveTo(0,y).lineTo(cw,y).stroke({color:0xff2a85,width:1+phase*1.5,alpha});
+  }
+}
+
+function drawCyberpunkHud(cw,ch){
+  const g=GPU.cyberHud;
+  g.clear();
+  const m=24,len=48;
+  // Yellow/Cyan tactical corner brackets
+  g.moveTo(m,m+len).lineTo(m,m).lineTo(m+len,m).stroke({color:0xfcee09,width:3,alpha:0.85});
+  g.moveTo(cw-m-len,m).lineTo(cw-m,m).lineTo(cw-m,m+len).stroke({color:0xfcee09,width:3,alpha:0.85});
+  g.moveTo(m,ch-m-len).lineTo(m,ch-m).lineTo(m+len,ch-m).stroke({color:0x00f0ff,width:3,alpha:0.85});
+  g.moveTo(cw-m-len,ch-m).lineTo(cw-m,ch-m).lineTo(cw-m,ch-m-len).stroke({color:0x00f0ff,width:3,alpha:0.85});
+
+  // Subtle circuit ticks & side telemetry rules
+  for(let y=ch*0.2;y<=ch*0.8;y+=36){
+    const w=(Math.round(y)%72===0)?14:6;
+    g.moveTo(m,y).lineTo(m+w,y).stroke({color:0xfcee09,width:1.5,alpha:0.35});
+    g.moveTo(cw-m,y).lineTo(cw-m-w,y).stroke({color:0x00f0ff,width:1.5,alpha:0.35});
+  }
+  // Top warning hazard bar accent
+  g.rect(cw*0.35,10,cw*0.3,3).fill({color:0xff003c,alpha:0.75});
+}
+
 function redrawBackdrop(){
   if(!GPU.ready)return;
   const cw=GPU.app.screen.width,ch=GPU.app.screen.height;
+  const st=STYLES[S.visualStyle]||STYLES.default;
   GPU.bgSolid.clear();
-  const bgCol=S.bgMode==='color'&&S.customBgHex!=null?S.customBgHex:0x08080b;
+  const bgCol=S.bgMode==='color'&&S.customBgHex!=null?S.customBgHex:st.bgHex;
   GPU.bgSolid.rect(0,0,cw,ch).fill(bgCol);
 
+  const dimAlpha=S.visualStyle==='default'?(S.bgMode==='solid'||S.bgMode==='color'?0:S.dim):Math.max(0.68,S.dim);
   GPU.dimGfx.clear();
-  GPU.dimGfx.rect(0,0,cw,ch).fill({color:0x000000,alpha:S.bgMode==='solid'||S.bgMode==='color'?0:S.dim});
+  GPU.dimGfx.rect(0,0,cw,ch).fill({color:0x000000,alpha:dimAlpha});
 
   if(GPU.bgSprite.texture&&GPU.bgSprite.texture!==PIXI.Texture.EMPTY){
     const tw=GPU.bgSprite.texture.width||1,th=GPU.bgSprite.texture.height||1;
@@ -214,8 +364,30 @@ function redrawBackdrop(){
     GPU.bgSprite.scale.set(sc);
   }
 
+  // Update theme visuals
+  GPU.synthSun.visible=S.visualStyle==='synthwave';
+  GPU.synthGrid.visible=S.visualStyle==='synthwave';
+  GPU.cyberHud.visible=S.visualStyle==='cyberpunk';
+  GPU.scanlines.visible=S.visualStyle!=='default';
+
+  if(S.visualStyle==='synthwave'){
+    const sunSz=Math.min(cw,ch)*0.48;
+    GPU.synthSun.width=GPU.synthSun.height=sunSz;
+    GPU.synthSun.position.set(cw*0.5,ch*0.44);
+    drawSynthwaveGrid(cw,ch,GPU.gridScroll);
+  }
+  if(S.visualStyle==='cyberpunk'){
+    drawCyberpunkHud(cw,ch);
+  }
+  if(GPU.scanlines.visible){
+    GPU.scanlines.width=cw;
+    GPU.scanlines.height=ch;
+    GPU.scanlines.alpha=S.visualStyle==='cyberpunk'?0.55:0.35;
+  }
+
   const sc=S.scene||{x:0,y:0,w:cw,h:ch};
   GPU.tickerText.style.fontSize=Math.round(sc.h*0.23);
+  GPU.tickerText.style.stroke={color:st.textHex,width:2,alpha:S.visualStyle==='default'?0.07:0.14};
   fitTickerText();
   GPU.tickerText.y=sc.y+sc.h*0.96;
   const lsz=Math.max(sc.h*1.65,800);
@@ -248,7 +420,8 @@ function updateLightTexture(hex){
   GPU.lightSprite.texture=makeRadialTexture(512,r,g,b);
   if(oldTex&&oldTex!==PIXI.Texture.EMPTY)oldTex.destroy(true);
 
-  const pal=S.palHex&&S.palHex.length?S.palHex:[hex,0x3b82f6,0x8b5cf6,hex];
+  const st=STYLES[S.visualStyle]||STYLES.default;
+  const pal=S.visualStyle!=='default'?st.palHex:(S.palHex&&S.palHex.length?S.palHex:[hex,0x3b82f6,0x8b5cf6,hex]);
   GPU.blobSprites.forEach((sp,i)=>{
     const c=pal[i%pal.length];
     const ot=sp.texture;
@@ -267,13 +440,39 @@ function setAccent(css){
   }
 }
 
+function setVisualStyle(styleName){
+  const key=STYLES[styleName]?styleName:'default';
+  S.visualStyle=key;
+  document.body.dataset.style=key;
+  const st=STYLES[key];
+  S.textHex=st.textHex;
+
+  document.querySelectorAll('#style-bar button').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.st===key);
+  });
+
+  if(key==='default'){
+    if(S.autoAccent&&S.baseAccent)setAccent(S.baseAccent);
+    else setAccent(S.manualAccent);
+  }else{
+    setAccent(st.accent);
+  }
+  updateLightTexture(S.accentHex);
+  redrawBackdrop();
+  S.idx=-99; // Force re-render of active lyric line in new style
+  reportHudBounds();
+}
+
 /* ---------- Font & Text Measurement ---------- */
 const FONT_SPECS={
   'f-cond':{family:'Bahnschrift, "Segoe UI", sans-serif',weight:'700',style:'normal',upper:true,letterSpacing:0},
   'f-black':{family:'"Segoe UI Black", "Arial Black", sans-serif',weight:'900',style:'normal',upper:true,letterSpacing:-2},
   'f-impact':{family:'Impact, Haettenschweiler, sans-serif',weight:'400',style:'normal',upper:true,letterSpacing:1},
   'f-serif':{family:'Georgia, "Times New Roman", serif',weight:'400',style:'italic',upper:false,letterSpacing:-1},
-  'f-mono':{family:'Consolas, "Cascadia Mono", monospace',weight:'400',style:'normal',upper:true,letterSpacing:14}
+  'f-mono':{family:'Consolas, "Cascadia Mono", monospace',weight:'400',style:'normal',upper:true,letterSpacing:14},
+  'f-synth':{family:'"Trebuchet MS", "Segoe UI Black", Impact, sans-serif',weight:'900',style:'italic',upper:true,letterSpacing:6},
+  'f-chrome':{family:'"Arial Black", Impact, sans-serif',weight:'900',style:'normal',upper:true,letterSpacing:3},
+  'f-cyber':{family:'Bahnschrift, Consolas, "Arial Black", sans-serif',weight:'800',style:'normal',upper:true,letterSpacing:5}
 };
 
 const measCanvas=document.createElement('canvas').getContext('2d');
@@ -715,6 +914,13 @@ function compose(words){
     S.lastComp=layoutFor(words,ctx);S.prevLay=S.lastComp;
     RNG=seeded(hashStr(words.join(' ').toLowerCase()+'|'+S.lastComp+'|'+(ctx.rep||0)));
     let us=COMPS[S.lastComp](words);
+
+    // Style-specific font override so Synthwave & Cyberpunk use distinct typography
+    const st=STYLES[S.visualStyle];
+    if(st&&S.visualStyle!=='default'){
+      us.forEach(u=>{if(!u.deco)u.font=pick(st.fonts)});
+    }
+
     if(ctx.chorus){let big=null;for(const u of us)if(!u.deco&&(!big||u.fs>big.fs))big=u;if(big)big.mods=(big.mods||'').replace('outline','').trim()+' acc'}
     if(ctx.adlibOnly)for(const u of us){u.fs*=.6;u.mods='';u.font='f-serif'}
     us=declutter(us,words);
@@ -731,6 +937,11 @@ const THEME_SETS={
 };
 function pickTheme(){
   if(S.low)return pick(['fade','rise','wipe']);
+  if(S.visualStyle!=='default'){
+    const pool=STYLES[S.visualStyle].transitions;
+    const o=pool.filter(t=>t!==S.lastTheme);
+    return S.lastTheme=pick(o.length?o:pool);
+  }
   if(THEME_SETS.mixed.includes(S.theme))return S.theme;
   if(S.lineCtx&&S.lineCtx.chorus&&S.lineCtx.text){
     const scn0=sceneOf();const set=(scn0&&S.theme==='mixed'?scn0.themes:(THEME_SETS[S.theme]||THEME_SETS.mixed));
@@ -749,7 +960,9 @@ function createGpuTextNode(rawText,fontKey,fs,mods,targetAlpha){
   const text=spec.upper?rawText.toUpperCase():rawText;
   const isAcc=(mods||'').includes('acc');
   const isOut=(mods||'').includes('outline')||(mods||'').includes('ghost');
+  const st=STYLES[S.visualStyle]||STYLES.default;
   const colHex=isAcc?S.accentHex:S.textHex;
+  const glowHex=isAcc?(st.secondaryHex||S.accentHex):S.accentHex;
 
   const style=new PIXI.TextStyle({
     fontFamily:spec.family,
@@ -757,9 +970,16 @@ function createGpuTextNode(rawText,fontKey,fs,mods,targetAlpha){
     fontStyle:spec.style,
     fontSize:Math.max(10,Math.round(fs)),
     fill:isOut?{color:0x000000,alpha:0}:colHex,
-    stroke:isOut?{color:colHex,width:Math.max(2,Math.round(fs*0.022))}:undefined,
+    stroke:isOut?{color:colHex,width:Math.max(2,Math.round(fs*0.024))}:(S.visualStyle!=='default'?{color:0x05020d,width:Math.max(2,Math.round(fs*0.03))}:undefined),
+    dropShadow:st.glow?{
+      color:glowHex,
+      alpha:0.85,
+      blur:Math.max(8,Math.round(fs*0.18)),
+      distance:0,
+      angle:0
+    }:undefined,
     letterSpacing:spec.letterSpacing?Math.round(spec.letterSpacing*(fs/100)):0,
-    padding:Math.round(fs*0.25)
+    padding:Math.round(fs*0.32)
   });
 
   const node=new PIXI.Text({text,style});
@@ -782,6 +1002,7 @@ function buildGpuLine(words,times,lineT,lineDur,customUnits){
 
   const units=[],wordNodes=[];
   const prevUnits=S.carryFrom||[];
+  const st=STYLES[S.visualStyle]||STYLES.default;
 
   part.units.forEach((u,idx)=>{
     const unitContainer=new PIXI.Container();
@@ -798,7 +1019,6 @@ function buildGpuLine(words,times,lineT,lineDur,customUnits){
       const tn=createGpuTextNode(u.text,u.font,u.fs,u.mods,targetOp);
       unitContainer.addChild(tn);
     }else{
-      // Lay out individual word sprites horizontally inside unitContainer so each word highlights & animates independently on GPU
       const pieces=u.ids.map(id=>{
         const m=measure(words[id],u.font);
         return{id,w:m.w*u.fs/100};
@@ -808,21 +1028,35 @@ function buildGpuLine(words,times,lineT,lineDur,customUnits){
       let curX=-totalW/2;
 
       pieces.forEach((p,pi)=>{
-        const tn=createGpuTextNode(words[p.id],u.font,u.fs,u.mods,0.22);
         const wordWrap=new PIXI.Container();
         wordWrap.position.set(curX+p.w/2,0);
+
+        // Cyberpunk / Synthwave chromatic aberration ghost layers
+        let ghostA=null,ghostB=null;
+        if(st.chromatic){
+          ghostA=createGpuTextNode(words[p.id],u.font,u.fs,'outline',0.15);
+          ghostA.tint=0xff003c;
+          ghostA.blendMode='add';
+          ghostA.position.set(-4,-2);
+          ghostB=createGpuTextNode(words[p.id],u.font,u.fs,'outline',0.15);
+          ghostB.tint=0x00f0ff;
+          ghostB.blendMode='add';
+          ghostB.position.set(4,2);
+          wordWrap.addChild(ghostA,ghostB);
+        }
+
+        const tn=createGpuTextNode(words[p.id],u.font,u.fs,u.mods,0.22);
         wordWrap.addChild(tn);
         unitContainer.addChild(wordWrap);
         curX+=p.w+spaceW;
         wordNodes.push({
-          wrap:wordWrap,textNode:tn,t:times[p.id],w:words[p.id],i:p.id,
+          wrap:wordWrap,textNode:tn,ghostA,ghostB,t:times[p.id],w:words[p.id],i:p.id,
           next:times[p.id+1]??null,fired:false,isAcc:(u.mods||'').includes('acc'),
           worldX:sc.x+u.x+(curX-p.w/2-spaceW),worldY:sc.y+u.y
         });
       });
     }
 
-    // Shared-word carry-over: glide from previous line's world coordinates
     const carried=S.carry&&key&&prevUnits.find(o=>o.key===key&&o.entered&&!o.used);
     const rec={
       container:unitContainer,t:unitT,targetX:u.x,targetY:u.y,targetAngle:u.r||0,
@@ -836,12 +1070,10 @@ function buildGpuLine(words,times,lineT,lineDur,customUnits){
       rec.t=lineT;
     }
 
-    // Start hidden until its timestamp arrives
     unitContainer.alpha=0;
     units.push(rec);
   });
 
-  // Camera follow mode: smoothly pan/zoom camera container toward active line
   if(S.camMode!=='off'&&!S.low&&lineDur>1.2){
     const h=hashStr(words.join(' ')+'|cam');
     const dir=(h&1)?1:-1;
@@ -882,6 +1114,19 @@ function animateUnitEnter(rec){
   let sx=rec.targetX,sy=rec.targetY,sa=rec.targetAngle,ssx=rec.targetScaleX,ssy=rec.targetScaleY,ease='power3.out';
 
   switch(th){
+    case'horizon':sy=sc.h*0.58;ssx=0.18;ssy=0.08*rec.targetScaleY;ease='expo.out';break;
+    case'vhs-tracking':sx=rec.targetX+(rec.idx%2?140:-140);ssx=1.45;ssy=0.85*rec.targetScaleY;ease='steps(5)';break;
+    case'laser-wipe':sx=rec.targetX-sc.w*0.4;ssx=2.2;ssy=0.12*rec.targetScaleY;ease='power4.out';break;
+    case'glitch-snap':
+      sx=rec.targetX+(rec.idx%2?48:-48);sy=rec.targetY+rnd(-22,22);ssx=1.25;ssy=0.8*rec.targetScaleY;
+      c.position.set(sx,sy);c.angle=sa;c.scale.set(ssx,ssy);c.alpha=rec.targetOp;
+      gsap.timeline()
+        .to(c,{x:rec.targetX-24,y:rec.targetY+10,duration:0.05})
+        .to(c,{x:rec.targetX+16,y:rec.targetY-6,duration:0.05})
+        .to(c,{x:rec.targetX,y:rec.targetY,duration:0.06,ease:'power2.out'});
+      gsap.to(c.scale,{x:rec.targetScaleX,y:rec.targetScaleY,duration:0.16,ease:'steps(3)'});
+      return;
+    case'rgb-split':sx=rec.targetX+(rec.idx%2?-70:70);ssx=0.7;ssy=1.3*rec.targetScaleY;ease='expo.out';break;
     case'slam':sx=rec.targetX+(rec.idx%2?1:-1)*sc.w*.55;ease='expo.out';break;
     case'drop':sy=-sc.h*.25;sa=rec.targetAngle+rnd(-10,10);ease='back.out(1.4)';break;
     case'zoom':ssx=2.6;ssy=2.6*rec.targetScaleY;ease='power3.out';break;
@@ -917,11 +1162,12 @@ function retireGpuLine(c){
 
   const th=c.th,sc=c.scr,dur=0.45*Math.min(1,c.fast);
   let dx=0,dy=0,dScale=1,dAngle=0;
-  if(th==='slam')dx=(Math.random()<.5?-1:1)*sc.w*.35;
+  if(th==='slam'||th==='vhs-tracking')dx=(Math.random()<.5?-1:1)*sc.w*.35;
   else if(th==='drop'||th==='gravity')dy=sc.h*.45;
-  else if(th==='rise')dy=-sc.h*.22;
+  else if(th==='rise'||th==='horizon')dy=-sc.h*.22;
   else if(th==='zoom')dScale=1.6;
   else if(th==='pop'||th==='spin'){dScale=0.4;dAngle=25;}
+  else if(th==='glitch-snap'||th==='rgb-split'){dx=(Math.random()<.5?-1:1)*90;dScale=1.15;}
 
   gsap.to(gc,{
     x:gc.x+dx,
@@ -929,7 +1175,7 @@ function retireGpuLine(c){
     angle:gc.angle+dAngle,
     alpha:0,
     duration:dur,
-    ease:'power2.in',
+    ease:th==='glitch-snap'?'steps(4)':'power2.in',
     onComplete:()=>{try{gc.destroy({children:true})}catch(e){}}
   });
   if(dScale!==1){
@@ -955,11 +1201,14 @@ function triggerWordFx(wn){
   const wrap=wn.wrap,tn=wn.textNode;
   if(typeof gsap!=='undefined'){
     gsap.to(tn,{alpha:1,duration:0.16,ease:'power2.out'});
+    if(wn.ghostA&&wn.ghostB){
+      gsap.fromTo(wn.ghostA,{x:-14,alpha:0.95},{x:-3,alpha:0.45,duration:0.28,ease:'steps(3)'});
+      gsap.fromTo(wn.ghostB,{x:14,alpha:0.95},{x:3,alpha:0.45,duration:0.28,ease:'steps(3)'});
+    }
   }else{
     tn.alpha=1;
   }
 
-  // Aim ambient spotlight toward active word
   GPU.lightTargetX=wn.worldX;
   GPU.lightTargetY=wn.worldY;
 
@@ -979,6 +1228,10 @@ function triggerWordFx(wn){
     case'fade':gsap.to(tn,{alpha:.35,duration:Math.max(0.8,hold)});return;
     case'stretch':gsap.fromTo(wrap.scale,{x:1.65,y:1},{x:1,y:1,duration:0.65,ease:'power3.out'});return;
     case'pulse':gsap.to(wrap.scale,{x:1.18,y:1.18,duration:0.18,yoyo:true,repeat:3});return;
+  }
+
+  if(S.visualStyle==='cyberpunk'){
+    gsap.fromTo(wrap,{x:rnd(-8,8)},{x:0,duration:0.14,ease:'steps(2)'});
   }
 
   if(hold>.75){
@@ -1106,17 +1359,18 @@ function showClock(){
   const d=new Date();let h=d.getHours(),suf='';
   if(!S.clock24){suf=h<12?' AM':' PM';h=h%12||12}
   const time=(S.clock24?String(h).padStart(2,'0'):String(h))+':'+String(d.getMinutes()).padStart(2,'0')+suf;
-  const key=time+d.getDate();
+  const key=time+d.getDate()+S.visualStyle;
   if(key===S.clockKey&&S.cur)return;
   S.clockKey=key;
   retireGpuLine(S.cur);
   const words=[time,DAYS[d.getDay()],`${d.getDate()} ${MONTHS[d.getMonth()]}`];
   const sc=S.scene;
-  const m=measure(words[0],'f-cond'),fs=Math.min(100*sc.w*.58/m.w,100*sc.h*.52/m.h),th=m.h*fs/100;
+  const mainF=S.visualStyle==='synthwave'?'f-synth':S.visualStyle==='cyberpunk'?'f-cyber':'f-cond';
+  const m=measure(words[0],mainF),fs=Math.min(100*sc.w*.58/m.w,100*sc.h*.52/m.h),th=m.h*fs/100;
   const dfs=Math.min(sc.h*.1,100*sc.w*.4/measure(words[1],'f-serif').w);
   const mfs=Math.min(sc.h*.04,100*sc.w*.5/measure(words[2],'f-mono').w);
   const units=[
-    {ids:[0],font:'f-cond',fs,x:sc.w/2,y:sc.h*.51,r:0,mods:'',op:.95},
+    {ids:[0],font:mainF,fs,x:sc.w/2,y:sc.h*.51,r:0,mods:'',op:.95},
     {ids:[1],font:'f-serif',fs:dfs,x:sc.w/2,y:sc.h*.51-th/2-dfs*.55,r:0,mods:'acc',op:1},
     {ids:[2],font:'f-mono',fs:mfs,x:sc.w/2,y:sc.h*.51+th/2+mfs*1.3,r:0,mods:'',op:.75}
   ];
@@ -1197,7 +1451,6 @@ function processAlbumArt(src){
   }
   const img=new Image();
   img.onload=()=>{
-    // Extract vibrant accent color
     const c=document.createElement('canvas');c.width=c.height=24;const x=c.getContext('2d');x.drawImage(img,0,0,24,24);
     const d=x.getImageData(0,0,24,24).data;let best=-1,bh=0,bs=0;const px=[];
     for(let i=0;i<d.length;i+=4){
@@ -1208,10 +1461,11 @@ function processAlbumArt(src){
     S.baseAccent=bs<.15?'hsl(0,0%,94%)':`hsl(${bh.toFixed(0)},${Math.max(65,bs*100).toFixed(0)}%,64%)`;
     px.sort((a,b)=>b[3]-a[3]);
     S.palHex=px.slice(0,4).map(p=>((p[0]<<16)|(p[1]<<8)|p[2]));
-    if(S.autoAccent)setAccent(S.baseAccent);
-    else updateLightTexture(S.accentHex);
+    if(S.visualStyle==='default'){
+      if(S.autoAccent)setAccent(S.baseAccent);
+      else updateLightTexture(S.accentHex);
+    }
 
-    // Upload downscaled texture to GPU background sprite
     if(GPU.ready){
       const bc=document.createElement('canvas');bc.width=bc.height=128;
       const bx=bc.getContext('2d');bx.filter='saturate(1.4)';bx.drawImage(img,0,0,128,128);
@@ -1269,21 +1523,45 @@ function onGpuTick(ticker){
   S.beatS+=(S.beat-S.beatS)*(S.beat>S.beatS?.15:.05);
   const R=S.low?Math.min(S.react,.25):S.react;
 
-  // Background drift & beat reaction on GPU sprites
   if(GPU.ready){
     const t=now/1000;
+    const cw=GPU.app.screen.width,ch=GPU.app.screen.height;
+
     if(S.bgMode==='drift'&&S.playing&&!S.low){
-      const cw=GPU.app.screen.width,ch=GPU.app.screen.height;
       GPU.bgSprite.x=cw/2+Math.sin(t*0.18)*cw*0.03;
       GPU.bgSprite.y=ch/2+Math.cos(t*0.14)*ch*0.025;
       GPU.bgSprite.angle=Math.sin(t*0.11)*1.2;
     }
+
+    // Synthwave scrolling grid & pulsing retro sun
+    if(S.visualStyle==='synthwave'){
+      const spd=S.playing?(1.6+S.beatS*3.5):0.6;
+      GPU.gridScroll=(GPU.gridScroll+dt*spd)%14;
+      drawSynthwaveGrid(cw,ch,GPU.gridScroll);
+      const sunPulse=1+S.beatS*0.08*R;
+      GPU.synthSun.scale.set(sunPulse);
+    }
+
+    // Cyberpunk CRT scanline roll & micro-glitch jitter
+    if(S.visualStyle==='cyberpunk'){
+      GPU.scanlines.tilePosition.y=(GPU.scanlines.tilePosition.y+dt*28)%4;
+      GPU.glitchTimer-=dt;
+      if(GPU.glitchTimer<=0&&!S.low){
+        GPU.glitchTimer=rnd(0.25,1.8);
+        if(S.cur&&S.cur.container&&RR()<0.45){
+          const gc=S.cur.container;
+          const ox=gc.x;
+          gc.x=ox+rnd(-12,12);
+          setTimeout(()=>{if(gc&&!gc.destroyed)gc.x=ox},45);
+        }
+      }
+    }
+
     if(GPU.tickerText.text){
       tickerOffset=(tickerOffset+dt*55)%Math.max(1,GPU.tickerText.width*0.5);
       GPU.tickerText.x=-tickerOffset;
     }
 
-    // Ambient spotlight smooth follow + kick/drop pulse
     GPU.lightX+=(GPU.lightTargetX-GPU.lightX)*0.08;
     GPU.lightY+=(GPU.lightTargetY-GPU.lightY)*0.08;
     GPU.lightSprite.position.set(GPU.lightX,GPU.lightY);
@@ -1310,11 +1588,10 @@ function onGpuTick(ticker){
     GPU.lightSprite.alpha=S.low?0:GPU.lightAlpha;
     GPU.lightSprite.scale.set(GPU.lightScale);
 
-    // Subtle idle camera breathing
     if(!S.low){
       const breath=1+S.beatS*0.008*R+Math.sin(t*0.25)*0.006;
-      GPU.worldContainer.position.set(GPU.app.screen.width/2,GPU.app.screen.height/2);
-      GPU.worldContainer.pivot.set(GPU.app.screen.width/2,GPU.app.screen.height/2);
+      GPU.worldContainer.position.set(cw/2,ch/2);
+      GPU.worldContainer.pivot.set(cw/2,ch/2);
       GPU.worldContainer.scale.set(breath);
       GPU.worldContainer.angle=Math.sin(t*0.16)*0.45;
     }
@@ -1326,7 +1603,6 @@ function onGpuTick(ticker){
   }
   if(SY.flashT&&now-SY.flashT>3500){SY.flashT=0;status(S.src||'')}
 
-  // Idle Clock Mode
   const idle=S.clockOn&&(!S.playing||!S.title)&&now-S.idleSince>3000;
   if(idle){
     if(!S.clockMode){S.clockMode=true;if(GPU.tickerText)GPU.tickerText.alpha=0;$('info').style.visibility='hidden'}
@@ -1398,10 +1674,26 @@ function layout(){
   GPU.lightTargetY=S.scene.y+S.scene.h/2;
   redrawBackdrop();
   S.idx=-99;
+  reportHudBounds();
+}
+function reportHudBounds(){
+  const bridge=window.chrome&&window.chrome.webview;
+  if(!bridge)return;
+  const buttons=Array.from(document.querySelectorAll('#style-bar button,#sync button')).map(b=>{
+    const r=b.getBoundingClientRect();
+    return{left:r.left,top:r.top,right:r.right,bottom:r.bottom};
+  });
+  bridge.postMessage({type:'hudBounds',data:{width:innerWidth,height:innerHeight,buttons}});
 }
 addEventListener('resize',()=>{clearTimeout(window._rzT);window._rzT=setTimeout(layout,250)});
 
-/* ---------- Sync & Track State ---------- */
+/* ---------- Style & Sync Controls ---------- */
+$('style-bar').addEventListener('click',e=>{
+  const b=e.target instanceof Element?e.target.closest('button'):null;
+  if(!b||!b.dataset.st)return;
+  setVisualStyle(b.dataset.st);
+});
+
 function resetSync(key){SY.key=key;SY.on=[];SY.auto=0;SY.last=-1;try{SY.nudge=+(localStorage.getItem('kl:'+key)||0)}catch(e){SY.nudge=0}updNudge()}
 function saveNudge(){try{SY.nudge?localStorage.setItem('kl:'+SY.key,SY.nudge.toFixed(2)):localStorage.removeItem('kl:'+SY.key)}catch(e){}}
 function updNudge(){const v=SY.nudge;$('nv').textContent=(v>0?'+':'')+v.toFixed(2)+'s'}
@@ -1434,12 +1726,13 @@ const wpColor=v=>{const [r,g,b]=v.split(' ').map(n=>Math.round(+n*255));return`r
 window.wallpaperPropertyListener={applyUserProperties(p){
   if(!p||typeof p!=='object')return;
   for(const k in p)if(!p[k]||typeof p[k]!=='object'||p[k].value==null)delete p[k];
+  try{if(p.style)setVisualStyle(p.style.value);}catch(e){}
   try{if(p.offset)S.offset=+p.offset.value||0;}catch(e){}
   try{if(p.dim){S.dim=Math.max(0,Math.min(1,(+p.dim.value||0)/100));redrawBackdrop()}}catch(e){}
   try{if(p.invert)root.classList.toggle('inv',!!p.invert.value);}catch(e){}
   try{if(p.accent)S.manualAccent=wpColor(p.accent.value);}catch(e){}
   try{if(p.autoaccent)S.autoAccent=p.autoaccent.value;}catch(e){}
-  try{if(p.accent||p.autoaccent){if(!S.autoAccent)setAccent(S.manualAccent);else if(S.baseAccent)setAccent(S.baseAccent)}}catch(e){}
+  try{if(p.accent||p.autoaccent){if(S.visualStyle==='default'){if(!S.autoAccent)setAccent(S.manualAccent);else if(S.baseAccent)setAccent(S.baseAccent)}}}catch(e){}
   let re=false;
   try{if(p.transition)S.theme=p.transition.value;}catch(e){}
   try{if(p.layout){S.layout=p.layout.value;S.idx=-99}}catch(e){}
@@ -1448,12 +1741,14 @@ window.wallpaperPropertyListener={applyUserProperties(p){
   try{if(p.camera)S.camMode=p.camera.value;}catch(e){}
   try{if(p.camamount)S.camAmt=isFinite(+p.camamount.value)?+p.camamount.value:S.camAmt;}catch(e){}
   try{if(p.preset&&p.preset.value!=='custom'){const P={
-      minimal:{theme:'smooth',layout:'flow',chaos:0,react:.3,carry:true,bg:'solid'},
-      calm:{theme:'smooth',layout:'auto',chaos:.1,react:.45,carry:true},
-      balanced:{theme:'mixed',layout:'auto',chaos:.35,react:.6,carry:true},
-      hype:{theme:'energetic',layout:'auto',chaos:.6,react:1,carry:true},
-      chaos:{theme:'mixed',layout:'auto',chaos:1,react:.9,carry:true}}[p.preset.value];
-    if(P){S.theme=P.theme;S.layout=P.layout;S.chaos=P.chaos;S.react=P.react;S.carry=P.carry;if(P.bg)applyBgMode(P.bg);S.idx=-99}}}catch(e){}
+      minimal:{theme:'smooth',layout:'flow',chaos:0,react:.3,carry:true,bg:'solid',style:'default'},
+      calm:{theme:'smooth',layout:'auto',chaos:.1,react:.45,carry:true,style:'default'},
+      balanced:{theme:'mixed',layout:'auto',chaos:.35,react:.6,carry:true,style:'default'},
+      hype:{theme:'energetic',layout:'auto',chaos:.6,react:1,carry:true,style:'default'},
+      chaos:{theme:'mixed',layout:'auto',chaos:1,react:.9,carry:true,style:'default'},
+      synthwave:{theme:'mixed',layout:'auto',chaos:.35,react:.75,carry:true,style:'synthwave'},
+      cyberpunk:{theme:'energetic',layout:'auto',chaos:.65,react:.95,carry:true,style:'cyberpunk'}}[p.preset.value];
+    if(P){S.theme=P.theme;S.layout=P.layout;S.chaos=P.chaos;S.react=P.react;S.carry=P.carry;if(P.bg)applyBgMode(P.bg);if(P.style)setVisualStyle(P.style);S.idx=-99}}}catch(e){}
   try{if(p.bgmode)applyBgMode(p.bgmode.value);}catch(e){}
   try{if(p.lowpower){S.low=p.lowpower.value}}catch(e){}
   try{if(p.choreo){S.choreo=p.choreo.value;S.idx=-99}}catch(e){}
@@ -1468,6 +1763,7 @@ window.wallpaperPropertyListener={applyUserProperties(p){
   try{if(p.layoutmode){S.layoutMode=p.layoutmode.value;re=true}}catch(e){}
   try{if(p.monitors&&p.monitors.value){S.monitors=p.monitors.value;re=true}}catch(e){}
   if(re)try{layout()}catch(e){}
+  else try{reportHudBounds()}catch(e){}
 }};
 
 (async function boot(){

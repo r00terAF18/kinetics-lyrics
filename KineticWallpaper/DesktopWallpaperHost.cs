@@ -52,6 +52,9 @@ public static class DesktopWallpaperHost
     [StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X, Y; }
+
     private delegate bool EnumWindowsProc(nint hwnd, nint lParam);
 
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
@@ -77,6 +80,12 @@ public static class DesktopWallpaperHost
 
     [DllImport("user32.dll")]
     private static extern nint GetParent(nint hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern nint WindowFromPoint(POINT point);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetAncestor(nint hWnd, uint flags);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
     private static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
@@ -106,7 +115,7 @@ public static class DesktopWallpaperHost
     public static string ModeDescription { get; private set; } = "Initializing";
     public static string TargetMonitorDeviceName { get; set; } = "";
 
-    private static (int X, int Y, int W, int H) GetTargetScreenRect()
+    public static (int X, int Y, int W, int H) GetTargetScreenRect()
     {
         if (!string.IsNullOrWhiteSpace(TargetMonitorDeviceName))
         {
@@ -121,6 +130,18 @@ public static class DesktopWallpaperHost
         int vw = Math.Max(640, GetSystemMetrics(SmCxVirtualScreen));
         int vh = Math.Max(480, GetSystemMetrics(SmCyVirtualScreen));
         return (vx, vy, vw, vh);
+    }
+
+    public static bool IsDesktopPoint(int x, int y)
+    {
+        var hit = WindowFromPoint(new POINT { X = x, Y = y });
+        if (hit == 0) return false;
+
+        var root = GetAncestor(hit, 2); // GA_ROOT
+        if (root == 0) root = hit;
+        var className = new StringBuilder(64);
+        GetClassName(root, className, className.Capacity);
+        return className.ToString() is "Progman" or "WorkerW";
     }
 
     public static void Attach(Window window, DesktopAttachMode mode = DesktopAttachMode.AutoShell)
