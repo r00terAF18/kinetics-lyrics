@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
@@ -215,6 +216,18 @@ public partial class MainWindow : Window
             WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
             WebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            WebView.CoreWebView2.NavigationStarting += (_, args) =>
+            {
+                if (Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri) &&
+                    uri.Scheme == Uri.UriSchemeHttps &&
+                    (uri.Host.Equals("genius.com", StringComparison.OrdinalIgnoreCase) ||
+                     uri.Host.EndsWith(".genius.com", StringComparison.OrdinalIgnoreCase)))
+                {
+                    args.Cancel = true;
+                    try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
+                    catch (Exception ex) { App.LogCrash("OpenGeniusSearch", ex); }
+                }
+            };
 
             _hudMouseForwarder = new HudMouseForwarder(WebView.CoreWebView2, DesktopWallpaperHost.GetTargetScreenRect);
             WebView.CoreWebView2.WebMessageReceived += (_, args) =>

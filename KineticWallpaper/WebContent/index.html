@@ -8,7 +8,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#08080b;color:var(--text);user-select:none}
 html.inv,html.inv body{background:#f7f7f4}
-html.inv #gpu-wrap,html.inv #hud,html.inv #clk,html.inv #dbg{filter:invert(1) hue-rotate(180deg)}
+html.inv #gpu-wrap,html.inv #hud,html.inv #theme-overlay,html.inv #clk,html.inv #dbg{filter:invert(1) hue-rotate(180deg)}
 
 #gpu-wrap{position:fixed;inset:0;width:100%;height:100%}
 #gpu-wrap canvas{display:block;width:100%!important;height:100%!important}
@@ -33,6 +33,11 @@ html.inv #gpu-wrap,html.inv #hud,html.inv #clk,html.inv #dbg{filter:invert(1) hu
 #sync:hover{opacity:1}
 #nv{min-width:52px;text-align:center}
 #status{position:absolute;right:calc(var(--rw,100vw)*.032);bottom:calc(var(--rh,100vh)*(.036 + var(--hudlift,0)));font:12px Consolas,monospace;letter-spacing:.2em;text-transform:uppercase;opacity:.48}
+#genius-link{position:absolute;right:calc(var(--rw,100vw)*.032);bottom:calc(var(--rh,100vh)*(.036 + var(--hudlift,0)) + 58px);display:none;pointer-events:auto;color:var(--accent);font:11px Consolas,monospace;letter-spacing:.12em;text-decoration:none;padding:5px 8px;border:1px solid rgba(255,255,255,.25);background:rgba(5,8,14,.78)}
+#genius-link:hover{color:#fff;border-color:var(--accent);text-shadow:0 0 8px var(--accent)}
+body[data-style="cyberpunk"] #genius-link{border-radius:0;border-color:rgba(0,240,255,.45);background:rgba(4,15,20,.9);color:#fcee09}
+body[data-style="synthwave"] #genius-link{border-color:rgba(255,92,190,.55);background:rgba(20,5,35,.86);color:#00efff}
+#mm-tracking{position:fixed;width:1px;height:1px;opacity:0;pointer-events:none}
 
 /* Theme-specific HUD polish */
 body[data-style="synthwave"] #art{border:1px solid #ff2a85;box-shadow:0 0 18px rgba(255,42,133,.55)}
@@ -42,6 +47,104 @@ body[data-style="synthwave"] #bar i{box-shadow:0 0 8px #00f0ff}
 body[data-style="cyberpunk"] #art{border-radius:0;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);border:1px solid #fcee09}
 body[data-style="cyberpunk"] #t{font-family:Consolas,"Cascadia Mono",monospace;letter-spacing:2px;text-transform:uppercase;color:#fcee09}
 body[data-style="cyberpunk"] #style-bar button,body[data-style="cyberpunk"] #sync button{border-radius:0;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+
+/* A light, full-screen finish keeps each theme present without sitting on the lyrics. */
+#theme-overlay{position:fixed;inset:0;z-index:12;overflow:hidden;pointer-events:none;display:none}
+#theme-overlay:before,#theme-overlay:after{content:"";position:absolute;inset:0;pointer-events:none}
+#theme-overlay:after{z-index:0;background:radial-gradient(ellipse at center,transparent 48%,rgba(0,0,0,.44) 100%);opacity:.46}
+.theme-ui{position:absolute;z-index:1;font-family:Consolas,"Cascadia Mono",monospace;pointer-events:none}
+#synth-ui,#cyber-ui,#cyber-mark,#brainrot-ui{display:none}
+
+/* SYNTHWAVE // a living VHS title card */
+body[data-style="synthwave"] #theme-overlay{display:block}
+body[data-style="synthwave"] #synth-ui{display:block}
+body[data-style="synthwave"] #theme-overlay:before{
+  opacity:.27;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.12) 0,rgba(255,255,255,.12) 1px,transparent 1px,transparent 4px);
+  animation:vhs-roll 18s linear infinite
+}
+#synth-ui{inset:0;color:#ffb6df;text-shadow:0 0 10px rgba(255,42,133,.7);font-size:11px;letter-spacing:.18em}
+#synth-topline{position:absolute;left:3.2%;right:3.2%;top:3.5%;display:flex;align-items:center;justify-content:space-between;opacity:.82}
+#synth-brand{font:900 clamp(13px,1.3vw,23px)/1 "Trebuchet MS",Impact,sans-serif;letter-spacing:.32em;color:#ff5ebc;text-transform:uppercase;text-shadow:0 0 14px rgba(255,42,133,.8)}
+#synth-rds{margin-left:18px;color:#80f8ff;font-size:10px;letter-spacing:.24em;text-align:right;text-shadow:0 0 9px rgba(0,240,255,.7)}
+#synth-osd{position:absolute;left:50%;top:8%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:7px 10px;border:1px solid rgba(255,94,188,.42);background:linear-gradient(100deg,rgba(20,5,35,.76),rgba(44,8,49,.18));box-shadow:0 0 22px rgba(255,42,133,.12);letter-spacing:.18em;font-size:9px;white-space:nowrap}
+#synth-osd .rec{display:inline-flex;align-items:center;gap:7px;color:#fff0f8}
+#synth-osd .rec i{width:7px;height:7px;border-radius:50%;background:#ff356f;box-shadow:0 0 10px #ff356f;animation:rec-blink 1.2s steps(2,end) infinite}
+#synth-counter{display:flex;align-items:center;gap:9px;color:#82f6ff}
+#synth-tape{width:clamp(70px,8vw,150px);height:3px;background:rgba(130,246,255,.2);overflow:hidden}
+#synth-tape i{display:block;width:100%;height:100%;transform:scaleX(0);transform-origin:left;background:linear-gradient(90deg,#ff3caa,#00efff);box-shadow:0 0 9px #00efff}
+#synth-stamp{position:absolute;right:3.2%;top:11%;color:#ffc857;font-size:9px;letter-spacing:.26em;opacity:.72;text-align:right}
+body[data-style="synthwave"] #info{padding:10px 13px 10px 10px;border:1px solid rgba(255,42,133,.28);border-left:3px solid #ff2a85;background:linear-gradient(105deg,rgba(16,5,30,.82),rgba(16,5,30,.08));box-shadow:0 0 26px rgba(255,42,133,.14)}
+body[data-style="synthwave"] #t{font-family:"Trebuchet MS",Impact,sans-serif;letter-spacing:1.8px;text-transform:uppercase;color:#fff1fa;text-shadow:0 0 8px #ff2a85,2px 0 rgba(0,240,255,.26)}
+body[data-style="synthwave"] #a{font-family:Consolas,monospace;letter-spacing:.08em;color:#8ff7ff}
+body[data-style="synthwave"] #style-bar button,body[data-style="synthwave"] #sync button{border-color:rgba(255,92,190,.45);border-radius:2px;background:rgba(20,5,35,.78);box-shadow:inset 0 0 12px rgba(255,42,133,.08);text-shadow:0 0 8px rgba(0,240,255,.4)}
+body[data-style="synthwave"] #style-bar button.active,body[data-style="synthwave"] #sync button:hover{border-color:#00efff;color:#fff;box-shadow:0 0 12px rgba(0,240,255,.48),inset 0 0 10px rgba(0,240,255,.16)}
+
+/* CYBERPUNK // a hostile, noisy city network leaking through the glass */
+body[data-style="cyberpunk"] #theme-overlay{display:block}
+body[data-style="cyberpunk"] #cyber-ui,body[data-style="cyberpunk"] #cyber-mark{display:block}
+body[data-style="cyberpunk"] #theme-overlay:before{
+  opacity:.19;
+  background:repeating-linear-gradient(0deg,rgba(0,240,255,.19) 0,rgba(0,240,255,.19) 1px,transparent 1px,transparent 4px),linear-gradient(90deg,rgba(255,0,60,.06),transparent 17%,transparent 83%,rgba(0,240,255,.055));
+  animation:crt-drift 11s linear infinite
+}
+#cyber-ui{left:3.2%;top:3.2%;width:min(310px,27vw);color:#bffaff;text-shadow:0 0 8px rgba(0,240,255,.45);font-size:10px;letter-spacing:.1em}
+#cyber-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 0 7px 9px;border-left:3px solid #fcee09;border-bottom:1px solid rgba(0,240,255,.52);background:linear-gradient(90deg,rgba(5,12,18,.84),rgba(5,12,18,.18));text-transform:uppercase}
+#cyber-head strong{color:#fcee09;font-size:11px;letter-spacing:.2em}
+#cyber-head span:last-child{color:#ff3154;font-size:9px}
+#cyber-log{margin-top:7px;padding:8px 9px;border-left:1px solid rgba(0,240,255,.34);background:linear-gradient(90deg,rgba(2,9,14,.64),transparent);color:rgba(166,244,247,.7);font:9px/1.65 Consolas,"Cascadia Mono",monospace;white-space:pre;letter-spacing:.045em}
+#cyber-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;color:rgba(252,238,9,.78);font-size:8px;letter-spacing:.18em;text-transform:uppercase}
+#cyber-spectrum{display:flex;align-items:flex-end;gap:2px;height:13px;width:60px}
+#cyber-spectrum i{flex:1;height:100%;transform:scaleY(var(--level,.08));transform-origin:bottom;background:#00f0ff;box-shadow:0 0 5px rgba(0,240,255,.6)}
+#cyber-mark{position:absolute;right:3.2%;top:3.4%;display:flex;align-items:center;gap:8px;padding:7px 10px;border-right:2px solid #ff003c;background:linear-gradient(270deg,rgba(28,4,12,.68),transparent);color:rgba(255,255,255,.64);font-size:9px;letter-spacing:.2em;text-align:right}
+#cyber-mark b{color:#ff3154;font-weight:700}
+#cyber-mark i{width:6px;height:6px;background:#ff003c;box-shadow:0 0 8px #ff003c;animation:rec-blink .8s steps(2,end) infinite}
+body[data-style="cyberpunk"] #info{padding:9px 12px 9px 9px;border:1px solid rgba(0,240,255,.36);border-left:3px solid #fcee09;border-radius:0;background:linear-gradient(100deg,rgba(2,9,14,.9),rgba(2,9,14,.22));box-shadow:5px 5px 0 rgba(255,0,60,.15),0 0 22px rgba(0,240,255,.12)}
+body[data-style="cyberpunk"] #art{filter:saturate(.8) contrast(1.18)}
+body[data-style="cyberpunk"] #t{color:#fcee09;text-shadow:2px 0 rgba(255,0,60,.55),-2px 0 rgba(0,240,255,.48),0 0 11px rgba(252,238,9,.42)}
+body[data-style="cyberpunk"] #a{color:#8debf0;font:11px Consolas,"Cascadia Mono",monospace;letter-spacing:.08em}
+body[data-style="cyberpunk"] #bar{height:3px;border-radius:0;background:rgba(0,240,255,.16)}
+body[data-style="cyberpunk"] #bar i{background:linear-gradient(90deg,#00f0ff,#fcee09,#ff003c);box-shadow:0 0 9px #00f0ff}
+body[data-style="cyberpunk"] #sync{padding:5px 7px;border-left:2px solid #ff003c;background:rgba(2,8,13,.78);box-shadow:0 0 18px rgba(0,240,255,.1)}
+body[data-style="cyberpunk"] #style-bar{padding:5px 6px;border-left:2px solid #00f0ff;background:rgba(2,8,13,.78)}
+body[data-style="cyberpunk"] #style-bar button,body[data-style="cyberpunk"] #sync button{border:1px solid rgba(0,240,255,.35);background:rgba(4,15,20,.82);color:#b7faff}
+body[data-style="cyberpunk"] #style-bar button.active,body[data-style="cyberpunk"] #sync button:hover{border-color:#fcee09;color:#fcee09;background:rgba(38,35,3,.55);box-shadow:0 0 12px rgba(252,238,9,.26)}
+/* BRAINROT // terminally online status board, loud colors with readable lyrics */
+body[data-style="brainrot"] #theme-overlay{display:block}
+body[data-style="brainrot"] #brainrot-ui{display:block}
+#brainrot-ui{position:absolute;right:3.2%;top:3.3%;width:min(390px,42vw);padding:12px 14px 10px;border:2px solid #00ff66;border-right:8px solid #ff00e5;background:linear-gradient(125deg,rgba(16,0,28,.94),rgba(0,20,30,.87));box-shadow:6px 6px 0 rgba(255,0,229,.38),0 0 24px rgba(0,255,102,.28);color:#00ff66;text-shadow:1px 1px #ff1744;font-family:Impact,"Arial Black",sans-serif;transform:rotate(.6deg);animation:brainrot-glow 3.2s ease-in-out infinite alternate}
+.br-header{display:flex;justify-content:space-between;gap:10px;align-items:center;padding-bottom:7px;border-bottom:1px dashed rgba(0,255,102,.64);font-size:clamp(12px,1vw,17px);letter-spacing:.1em;color:#ffff00}
+.br-header b{color:#fff;text-align:right;font-size:.88em}
+.br-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:8px;font:700 10px/1.25 "Comic Sans MS",Impact,sans-serif;letter-spacing:.04em;color:#00ffff}
+.br-metrics div{min-width:0;padding:5px 4px;border:1px solid rgba(0,255,255,.35);background:rgba(0,0,0,.48);text-align:center;overflow-wrap:anywhere}
+.br-metrics span{display:block;margin-top:3px;color:#ffff00;font:700 12px/1.1 "Comic Sans MS",Impact,sans-serif}
+.br-ticker{margin-top:8px;overflow:hidden;border-top:1px solid rgba(255,0,229,.55);padding-top:6px;color:#ff8af4;font:700 10px/1.3 "Comic Sans MS",Papyrus,sans-serif;letter-spacing:.06em;white-space:nowrap}
+.br-ticker span{display:inline-block;min-width:100%;animation:brainrot-marquee 24s linear infinite}
+body[data-style="brainrot"] #info{padding:9px 12px 9px 9px;border:2px solid #ffff00;border-left:7px solid #00ff66;background:linear-gradient(110deg,rgba(18,0,28,.94),rgba(0,20,30,.68));box-shadow:5px 5px 0 rgba(255,0,229,.34),0 0 20px rgba(0,255,102,.22)}
+body[data-style="brainrot"] #t{font-family:"Comic Sans MS",Impact,sans-serif;letter-spacing:.04em;color:#ffff00;text-shadow:2px 1px #ff1744,-1px -1px #00ffff}
+body[data-style="brainrot"] #a{font:700 11px Papyrus,"Comic Sans MS",sans-serif;color:#00ffff;letter-spacing:.04em}
+body[data-style="brainrot"] #bar i{background:linear-gradient(90deg,#00ff66,#00ffff,#ff00e5,#ffff00);box-shadow:0 0 10px #00ffff}
+body[data-style="brainrot"] #style-bar{padding:5px 6px;border:2px dashed #ff00e5;background:rgba(12,0,20,.9)}
+body[data-style="brainrot"] #style-bar button,body[data-style="brainrot"] #sync button{border-radius:0;border-color:#00ffff;background:rgba(8,0,18,.92);color:#ffff00}
+body[data-style="brainrot"] #style-bar button.active,body[data-style="brainrot"] #sync button:hover{border-color:#00ff66;color:#00ff66;box-shadow:0 0 12px rgba(0,255,102,.55)}
+body.signal-break[data-style="brainrot"] #brainrot-ui{animation:brainrot-jolt .16s steps(2,end)}
+body.low-power #brainrot-ui,body.low-power .br-ticker span{animation:none}
+@keyframes brainrot-glow{to{box-shadow:6px 6px 0 rgba(255,0,229,.48),0 0 30px rgba(0,255,102,.42)}}
+@keyframes brainrot-marquee{to{transform:translateX(-100%)}}
+@keyframes brainrot-jolt{50%{transform:translateX(3px) rotate(-.5deg)}}
+@media(max-width:700px){#brainrot-ui{right:3%;top:13%;width:min(370px,58vw);padding:8px}.br-header{font-size:11px}.br-metrics{font-size:8px}.br-metrics span{font-size:10px}.br-ticker{font-size:8px}}
+@media(prefers-reduced-motion:reduce){#brainrot-ui,.br-ticker span{animation:none!important}}
+body.signal-break[data-style="cyberpunk"] #cyber-log{animation:signal-break .14s steps(2,end)}
+body.signal-break[data-style="cyberpunk"] #theme-overlay:before{background-color:rgba(255,0,60,.12)}
+body.signal-break[data-style="synthwave"] #synth-osd{animation:tape-wobble .2s steps(3,end)}
+body.low-power #theme-overlay:before,body.low-power #synth-osd .rec i,body.low-power #cyber-mark i{animation:none}
+
+@keyframes vhs-roll{0%{background-position:0 0}100%{background-position:0 120px}}
+@keyframes crt-drift{0%{background-position:0 0,0 0}100%{background-position:0 80px,0 0}}
+@keyframes rec-blink{50%{opacity:.28}}
+@keyframes signal-break{0%{transform:translateX(-3px);clip-path:inset(0 0 58% 0)}50%{transform:translateX(3px);clip-path:inset(35% 0 23% 0)}100%{transform:none;clip-path:inset(0)}}
+@keyframes tape-wobble{0%{transform:translateX(calc(-50% - 2px))}50%{transform:translateX(calc(-50% + 2px))}100%{transform:translateX(-50%)}}
+
 
 #dbg{position:fixed;inset:0;pointer-events:none;display:none;z-index:8}
 #dbg div{position:absolute;outline:2px dashed #00e5ff;outline-offset:-2px;color:#00e5ff;font:600 18px Consolas,monospace;padding:12px}
@@ -59,6 +162,7 @@ body[data-style="cyberpunk"] #style-bar button,body[data-style="cyberpunk"] #syn
     <button data-st="default" class="active">DEFAULT</button>
     <button data-st="synthwave">SYNTHWAVE</button>
     <button data-st="cyberpunk">CYBERPUNK</button>
+    <button data-st="brainrot">🧠 BRAINROT</button>
   </div>
   <div id="sync" role="group" aria-label="Lyrics timing controls">
     <button data-d="0.1" title="show lyrics earlier">« earlier</button>
@@ -68,6 +172,26 @@ body[data-style="cyberpunk"] #style-bar button,body[data-style="cyberpunk"] #syn
     <button data-r="1" title="reload lyrics, audio and clock">⟳</button>
   </div>
   <div id="status">INITIALIZING GPU…</div>
+  <a id="genius-link" href="https://genius.com/" aria-label="Search this song on Genius">SEARCH GENIUS ↗</a>
+  <img id="mm-tracking" alt="" aria-hidden="true">
+</div>
+<div id="theme-overlay" aria-hidden="true">
+  <div id="synth-ui" class="theme-ui">
+    <div id="synth-topline"><span id="synth-brand">NIGHT DRIVE</span><span id="synth-rds">FM 88.8&nbsp; · &nbsp;STEREO</span></div>
+    <div id="synth-osd"><span class="rec"><i></i><span id="synth-play">PLAY</span></span><span>SP</span><span>HI-FI</span><span id="synth-counter">00:00 <span id="synth-tape"><i id="synth-tape-fill"></i></span></span></div>
+    <div id="synth-stamp">AUTO TRACKING&nbsp; · &nbsp;CH 03&nbsp; · &nbsp;NTSC</div>
+  </div>
+  <div id="cyber-ui" class="theme-ui">
+    <div id="cyber-head"><strong>KL // NIGHT CITY</strong><span>LIVE FEED</span></div>
+    <pre id="cyber-log"></pre>
+    <div id="cyber-foot"><span id="cyber-state">NO SIGNAL</span><span id="cyber-spectrum" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+  </div>
+  <div id="cyber-mark" class="theme-ui"><i></i><span><b>UNLICENSED</b> / AUDIO NODE 07</span></div>
+  <div id="brainrot-ui" class="theme-ui" aria-live="off">
+    <div class="br-header"><span>💀 SKIBIDI STATUS</span><b id="br-status">RIZZ OVERFLOW</b></div>
+    <div class="br-metrics"><div>SIGMA<span id="br-sigma">6,700</span></div><div>GYATT<span id="br-gyatt">LEVEL 67</span></div><div>FANUM TAX<span id="br-tax">ACTIVE 🍟</span></div></div>
+    <div class="br-ticker"><span id="br-ticker">🚨 OHIO ALERT // BABY GRONK HAS SCORED // MEWING STREAK: 420H 🚨</span></div>
+  </div>
 </div>
 <div id="dbg"></div>
 <div id="clk"></div>
@@ -84,7 +208,7 @@ const S={
   layout:'auto',theme:'mixed',chaos:.35,carry:true,camMode:'auto',camAmt:50,
   bgMode:'art',dim:.55,low:false,choreo:true,moodOn:true,lfmKey:'',
   clockOn:true,clock24:true,idleSince:performance.now(),react:.6,flashes:true,
-  provider:'auto',showInfo:true,layoutMode:'single',monitors:'',debug:false,
+  provider:'auto',mmKey:'',copyright:'',showInfo:true,layoutMode:'single',monitors:'',debug:false,
   sec:null,region:null,scene:{x:0,y:0,w:1920,h:1080},hud:{x:0,y:0,w:1920,h:1080},
   mood:{intensity:.5,dark:.5,bpm:0,tags:[],src:'none'},moodNow:.5,
   kCur:0,kLo:null,kHi:null,kRes:[],kLearned:false,snapBias:.5
@@ -92,6 +216,7 @@ const S={
 try{const b=parseFloat(localStorage.getItem('kl:snapBias'));if(isFinite(b))S.snapBias=b}catch(e){}
 const SY={key:'',on:[],prev:0,avg:.02,last:-1,auto:0,nudge:0,lastCalc:0,enabled:false,flashT:0};
 const AU={low:0,mid:0,high:0,tot:0,lowA:.3,highA:.3,totA:.3,totSlow:.3,flat:0,lastKick:0,lastHat:0,lastDrop:0,dist:0,vocal:0,ev:{kick:0,hat:0,drop:0},cnt:{kick:0,hat:0,drop:0}};
+const STYLE_UI={nextUpdate:0,nextBreak:performance.now()+2400,brainAt:0};
 
 /* ---------- Visual Style Profiles ---------- */
 const STYLES={
@@ -114,7 +239,7 @@ const STYLES={
     fonts:['f-synth','f-chrome','f-impact','f-cond'],
     transitions:['horizon','vhs-tracking','laser-wipe','zoom','rise','wave','echo','orbit'],
     glow:true,
-    chromatic:false
+    chromatic:true
   },
   cyberpunk:{
     bgHex:0x05070a,
@@ -123,7 +248,18 @@ const STYLES={
     secondaryHex:0xff003c,
     palHex:[0xfcee09,0x00f0ff,0xff003c,0x14f195],
     fonts:['f-cyber','f-mono','f-black','f-impact'],
-    transitions:['glitch-snap','rgb-split','slam','collide','skew','stretch','fly','pop'],
+    transitions:['glitch-snap','fade','rise'],
+    glow:true,
+    chromatic:true
+  },
+  brainrot:{
+    bgHex:0x170020,
+    textHex:0xffff00,
+    accent:'#00ff66',
+    secondaryHex:0xff00e5,
+    palHex:[0x00ff66,0x00ffff,0xff00e5,0xffff00,0xff1744],
+    fonts:['f-brain','f-impact','f-black'],
+    transitions:['glitch-snap','pop','slam','spin','rubber','wave','rise'],
     glow:true,
     chromatic:true
   }
@@ -138,16 +274,69 @@ const rnd=(a,b)=>a+RR()*(b-a), pick=a=>{
 const hashStr=t=>{let h=2166136261;for(const c of t)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
 const seeded=seed=>()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(RR()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
-const status=m=>$('status').textContent=m;
+const status=m=>$('status').textContent=(S.copyright&&m===S.src?`${m} · ${S.copyright}`:m);
 const baseClock=()=>S.basePos+(S.playing?(performance.now()-S.baseT)/1000:0);
 const rawPos=()=>baseClock()+(S.kCur||0);
 const pos=()=>rawPos()+S.offset/1000+SY.nudge+(SY.enabled?SY.auto:0);
+
+function updateStyleInterface(now){
+  document.body.classList.toggle('low-power',S.low);
+  const cyber=S.visualStyle==='cyberpunk',synth=S.visualStyle==='synthwave',brain=S.visualStyle==='brainrot';
+  if(brain&&now>=STYLE_UI.brainAt){
+    STYLE_UI.brainAt=now+760;
+    $('br-sigma').textContent=Math.floor(6700+RR()*93000).toLocaleString();
+    $('br-gyatt').textContent='LEVEL '+(Math.floor(7+RR()*94));
+    $('br-tax').textContent=RR()>.24?'ACTIVE 🍟':'COLLECTED 🍟';
+    $('br-status').textContent=pick(['RIZZ OVERFLOW','SKIBIDI DETECTED','OHIO ALERT','SIGMA MODE: ON','BABY GRONK INBOUND']);
+    $('br-ticker').textContent=pick([
+      '🚨 OHIO ALERT // BABY GRONK HAS SCORED // MEWING STREAK: 420H 🚨',
+      '💀 FANUM TAX AUDIT // RIZZ LEVELS UNSTABLE // SIGMA ONLINE 💀',
+      '⚠️ SKIBIDI SIGNAL DETECTED // CERTIFIED LOCKED IN // NO CAP ⚠️'
+    ]);
+  }
+  if(!cyber&&!synth&&!brain)return;
+  if(cyber){
+    const feed=S.src?String(S.src).toUpperCase():(S.title?'SEARCHING':'NO MEDIA');
+    const line=S.idx>=0?String(S.idx+1).padStart(3,'0'):'---';
+    const total=S.lines.length?String(S.lines.length).padStart(3,'0'):'---';
+    const offset=(S.offset/1000+SY.nudge+(SY.enabled?SY.auto:0)).toFixed(2);
+    $('cyber-log').textContent=[
+      `> FEED  // ${feed}`,
+      `> TRACK // ${S.playing?'PLAY':'IDLE'} · ${line}/${total}`,
+      `> CLOCK // ${fmtT(Math.max(0,pos())).slice(0,5)} · ${S.dur?fmtT(S.dur).slice(0,5):'--:--'}`,
+      `> SYNC  // ${offset.startsWith('-')?'':'+'}${offset}s`
+    ].join('\n');
+    $('cyber-state').textContent=S.playing?'AUDIO LINK / ACTIVE':'AUDIO LINK / STANDBY';
+    const bars=$('cyber-spectrum').children;
+    for(let i=0;i<bars.length;i++){
+      const level=AU.bands?.[i]??0;
+      bars[i].style.setProperty('--level',String(Math.max(.06,Math.min(1,level*2.2))));
+    }
+  }
+  if(synth){
+    const seconds=Math.max(0,pos());
+    $('synth-play').textContent=S.playing?'PLAY':'PAUSE';
+    $('synth-counter').firstChild.textContent=fmtT(seconds).slice(0,5)+' ';
+    $('synth-tape-fill').style.transform=`scaleX(${S.dur?Math.max(0,Math.min(1,seconds/S.dur)):0})`;
+  }
+}
+
+function pulseThemeSignal(now){
+  if(now<STYLE_UI.nextBreak||S.low)return;
+  const style=S.visualStyle;
+  if(style!=='cyberpunk'&&style!=='synthwave'&&style!=='brainrot')return;
+  STYLE_UI.nextBreak=now+(style==='cyberpunk'?rnd(2300,6500):style==='brainrot'?rnd(5200,10500):rnd(9000,18000));
+  document.body.classList.remove('signal-break');
+  void document.body.offsetWidth;
+  document.body.classList.add('signal-break');
+  setTimeout(()=>document.body.classList.remove('signal-break'),style==='brainrot'?160:style==='cyberpunk'?170:230);
+}
 
 /* ---------- GPU Engine (PixiJS v8 + GSAP) ---------- */
 const GPU={
   app:null,ready:false,
   bgContainer:null,bgSprite:null,bgSolid:null,blobSprites:[],
-  themeLayer:null,synthSun:null,synthGrid:null,cyberHud:null,scanlines:null,
+  themeLayer:null,synthSun:null,synthGrid:null,synthCity:null,cyberHud:null,scanlines:null,
   dimGfx:null,lightSprite:null,tickerText:null,
   cameraContainer:null,worldContainer:null,stageContainer:null,
   blurFilter:null,activeGroup:null,parkedGroups:[],
@@ -257,11 +446,13 @@ async function initGpu(){
   GPU.synthSun.visible=false;
   GPU.synthGrid=new PIXI.Graphics();
   GPU.synthGrid.visible=false;
+  GPU.synthCity=new PIXI.Graphics();
+  GPU.synthCity.visible=false;
   GPU.cyberHud=new PIXI.Graphics();
   GPU.cyberHud.visible=false;
   GPU.scanlines=new PIXI.TilingSprite({texture:makeScanlineTexture(),width:1920,height:1080});
   GPU.scanlines.visible=false;
-  GPU.themeLayer.addChild(GPU.synthSun,GPU.synthGrid,GPU.cyberHud,GPU.scanlines);
+  GPU.themeLayer.addChild(GPU.synthSun,GPU.synthGrid,GPU.synthCity,GPU.cyberHud,GPU.scanlines);
 
   GPU.lightSprite=new PIXI.Sprite(makeRadialTexture(512,255,77,109));
   GPU.lightSprite.anchor.set(0.5);
@@ -325,6 +516,27 @@ function drawSynthwaveGrid(cw,ch,scroll){
   }
 }
 
+function drawSynthwaveCity(cw,ch){
+  const g=GPU.synthCity;
+  g.clear();
+  const hy=ch*0.58;
+  // A distant, blocky night-city silhouette gives the sunset a 90s arcade horizon.
+  const skyline=[
+    [.00,.13,.10],[.09,.08,.17],[.16,.12,.12],[.28,.09,.23],[.37,.07,.15],
+    [.46,.12,.20],[.60,.08,.13],[.69,.13,.24],[.83,.08,.16],[.91,.11,.21]
+  ];
+  skyline.forEach(([x,w,h],i)=>{
+    const bx=x*cw,bw=w*cw,top=hy-h*ch;
+    g.rect(bx,top,bw,hy-top).fill({color:i%3===0?0x130c2c:0x090a1c,alpha:.94});
+    g.moveTo(bx,top).lineTo(bx+bw,top).stroke({color:i%2?0x00f0ff:0xff2a85,width:1,alpha:.34});
+    const winW=Math.max(2,bw*.055),winH=Math.max(2,ch*.005);
+    for(let row=0;row<4;row++)for(let col=0;col<3;col++){
+      const wx=bx+bw*(.18+col*.24),wy=top+ch*(.022+row*.024);
+      if(wy<hy-ch*.01)g.rect(wx,wy,winW,winH).fill({color:(row+col+i)%3===0?0xffbe0b:0x00f0ff,alpha:.28});
+    }
+  });
+}
+
 function drawCyberpunkHud(cw,ch){
   const g=GPU.cyberHud;
   g.clear();
@@ -367,6 +579,7 @@ function redrawBackdrop(){
   // Update theme visuals
   GPU.synthSun.visible=S.visualStyle==='synthwave';
   GPU.synthGrid.visible=S.visualStyle==='synthwave';
+  GPU.synthCity.visible=S.visualStyle==='synthwave';
   GPU.cyberHud.visible=S.visualStyle==='cyberpunk';
   GPU.scanlines.visible=S.visualStyle!=='default';
 
@@ -375,6 +588,7 @@ function redrawBackdrop(){
     GPU.synthSun.width=GPU.synthSun.height=sunSz;
     GPU.synthSun.position.set(cw*0.5,ch*0.44);
     drawSynthwaveGrid(cw,ch,GPU.gridScroll);
+    drawSynthwaveCity(cw,ch);
   }
   if(S.visualStyle==='cyberpunk'){
     drawCyberpunkHud(cw,ch);
@@ -382,12 +596,13 @@ function redrawBackdrop(){
   if(GPU.scanlines.visible){
     GPU.scanlines.width=cw;
     GPU.scanlines.height=ch;
-    GPU.scanlines.alpha=S.visualStyle==='cyberpunk'?0.55:0.35;
+    GPU.scanlines.alpha=S.visualStyle==='cyberpunk'?0.55:S.visualStyle==='brainrot'?0.24:0.35;
   }
 
   const sc=S.scene||{x:0,y:0,w:cw,h:ch};
   GPU.tickerText.style.fontSize=Math.round(sc.h*0.23);
   GPU.tickerText.style.stroke={color:st.textHex,width:2,alpha:S.visualStyle==='default'?0.07:0.14};
+  GPU.tickerText.visible=S.visualStyle!=='cyberpunk'&&S.visualStyle!=='brainrot';
   fitTickerText();
   GPU.tickerText.y=sc.y+sc.h*0.96;
   const lsz=Math.max(sc.h*1.65,800);
@@ -457,6 +672,7 @@ function setVisualStyle(styleName){
   }else{
     setAccent(st.accent);
   }
+  updateStyleInterface(performance.now());
   updateLightTexture(S.accentHex);
   redrawBackdrop();
   S.idx=-99; // Force re-render of active lyric line in new style
@@ -472,7 +688,8 @@ const FONT_SPECS={
   'f-mono':{family:'Consolas, "Cascadia Mono", monospace',weight:'400',style:'normal',upper:true,letterSpacing:14},
   'f-synth':{family:'"Trebuchet MS", "Segoe UI Black", Impact, sans-serif',weight:'900',style:'italic',upper:true,letterSpacing:6},
   'f-chrome':{family:'"Arial Black", Impact, sans-serif',weight:'900',style:'normal',upper:true,letterSpacing:3},
-  'f-cyber':{family:'Bahnschrift, Consolas, "Arial Black", sans-serif',weight:'800',style:'normal',upper:true,letterSpacing:5}
+  'f-cyber':{family:'Bahnschrift, Consolas, "Arial Black", sans-serif',weight:'800',style:'normal',upper:true,letterSpacing:5},
+  'f-brain':{family:'"Comic Sans MS", Impact, "Arial Black", sans-serif',weight:'900',style:'normal',upper:true,letterSpacing:2}
 };
 
 const measCanvas=document.createElement('canvas').getContext('2d');
@@ -906,8 +1123,43 @@ function fit(units,words){
   return units;
 }
 
+function composeCyberpunk(words,scr){
+  const font='f-cyber',maxWidth=scr.w*.68,maxHeight=scr.h*.72;
+  let fs=Math.max(18,scr.h*.2),rows=[];
+  const pack=()=>{
+    const packed=[];let ids=[],width=0;
+    const space=measure(' ',font).w*fs/100;
+    words.forEach((word,i)=>{
+      const wordWidth=measure(word,font).w*fs/100;
+      const nextWidth=width+(ids.length?space:0)+wordWidth;
+      if(ids.length&&nextWidth>maxWidth){packed.push({ids,width});ids=[];width=0}
+      width+=(ids.length?space:0)+wordWidth;
+      ids.push(i);
+    });
+    if(ids.length)packed.push({ids,width});
+    return packed;
+  };
+  for(let i=0;i<48;i++){
+    rows=pack();
+    const tallest=fs*1.8*rows.length;
+    if(rows.every(row=>row.width<=maxWidth)&&tallest<=maxHeight)break;
+    fs=Math.max(18,fs*.9);
+  }
+  const rowStep=fs*1.8,totalHeight=rowStep*rows.length,top=(scr.h-totalHeight)/2+rowStep/2;
+  const focus=Math.floor((rows.length-1)/2);
+  const units=rows.map((row,i)=>({
+    ids:row.ids,font,fs,x:scr.w/2,y:top+i*rowStep,r:0,
+    mods:i===focus?'acc':'',op:i===focus?1:.88
+  }));
+  return units;
+}
+
 function compose(words){
-  const scr=S.region||S.scene;
+  const scr=S.visualStyle==='cyberpunk'?S.scene:(S.region||S.scene);
+  if(S.visualStyle==='cyberpunk'){
+    S.lastComp='cyber-flow';
+    return{scr,units:composeCyberpunk(words,scr)};
+  }
   const w0=W,h0=H;W=scr.w;H=scr.h;
   try{
     const ctx=S.lineCtx||{};
@@ -1034,14 +1286,15 @@ function buildGpuLine(words,times,lineT,lineDur,customUnits){
         // Cyberpunk / Synthwave chromatic aberration ghost layers
         let ghostA=null,ghostB=null;
         if(st.chromatic){
-          ghostA=createGpuTextNode(words[p.id],u.font,u.fs,'outline',0.15);
+          const ghostOpacity=S.visualStyle==='cyberpunk'?.08:.11;
+          ghostA=createGpuTextNode(words[p.id],u.font,u.fs,'outline',ghostOpacity);
           ghostA.tint=0xff003c;
           ghostA.blendMode='add';
-          ghostA.position.set(-4,-2);
-          ghostB=createGpuTextNode(words[p.id],u.font,u.fs,'outline',0.15);
+          ghostA.position.set(-3,-1);
+          ghostB=createGpuTextNode(words[p.id],u.font,u.fs,'outline',ghostOpacity);
           ghostB.tint=0x00f0ff;
           ghostB.blendMode='add';
-          ghostB.position.set(4,2);
+          ghostB.position.set(3,1);
           wordWrap.addChild(ghostA,ghostB);
         }
 
@@ -1057,7 +1310,7 @@ function buildGpuLine(words,times,lineT,lineDur,customUnits){
       });
     }
 
-    const carried=S.carry&&key&&prevUnits.find(o=>o.key===key&&o.entered&&!o.used);
+    const carried=S.carry&&S.visualStyle!=='cyberpunk'&&key&&prevUnits.find(o=>o.key===key&&o.entered&&!o.used);
     const rec={
       container:unitContainer,t:unitT,targetX:u.x,targetY:u.y,targetAngle:u.r||0,
       targetScaleX:1,targetScaleY:(u.mods||'').includes('mirror')?-1:1,targetOp,
@@ -1118,14 +1371,19 @@ function animateUnitEnter(rec){
     case'vhs-tracking':sx=rec.targetX+(rec.idx%2?140:-140);ssx=1.45;ssy=0.85*rec.targetScaleY;ease='steps(5)';break;
     case'laser-wipe':sx=rec.targetX-sc.w*0.4;ssx=2.2;ssy=0.12*rec.targetScaleY;ease='power4.out';break;
     case'glitch-snap':
-      sx=rec.targetX+(rec.idx%2?48:-48);sy=rec.targetY+rnd(-22,22);ssx=1.25;ssy=0.8*rec.targetScaleY;
+      {
+      const cyber=S.visualStyle==='cyberpunk',spread=cyber?14:48,jitter=cyber?7:22;
+      sx=rec.targetX+(rec.idx%2?spread:-spread);sy=rec.targetY+rnd(-jitter,jitter);
+      ssx=cyber?1.06:1.25;ssy=(cyber?.94:.8)*rec.targetScaleY;
       c.position.set(sx,sy);c.angle=sa;c.scale.set(ssx,ssy);c.alpha=rec.targetOp;
+      const hop=cyber?7:24,nudge=cyber?3:10,beat=cyber?.035:.05;
       gsap.timeline()
-        .to(c,{x:rec.targetX-24,y:rec.targetY+10,duration:0.05})
-        .to(c,{x:rec.targetX+16,y:rec.targetY-6,duration:0.05})
-        .to(c,{x:rec.targetX,y:rec.targetY,duration:0.06,ease:'power2.out'});
-      gsap.to(c.scale,{x:rec.targetScaleX,y:rec.targetScaleY,duration:0.16,ease:'steps(3)'});
+        .to(c,{x:rec.targetX-hop,y:rec.targetY+nudge,duration:beat})
+        .to(c,{x:rec.targetX+hop*.65,y:rec.targetY-nudge*.6,duration:beat})
+        .to(c,{x:rec.targetX,y:rec.targetY,duration:cyber?.05:.06,ease:'power2.out'});
+      gsap.to(c.scale,{x:rec.targetScaleX,y:rec.targetScaleY,duration:cyber?.12:.16,ease:'steps(3)'});
       return;
+      }
     case'rgb-split':sx=rec.targetX+(rec.idx%2?-70:70);ssx=0.7;ssy=1.3*rec.targetScaleY;ease='expo.out';break;
     case'slam':sx=rec.targetX+(rec.idx%2?1:-1)*sc.w*.55;ease='expo.out';break;
     case'drop':sy=-sc.h*.25;sa=rec.targetAngle+rnd(-10,10);ease='back.out(1.4)';break;
@@ -1160,14 +1418,16 @@ function retireGpuLine(c){
   const gc=c.container;
   if(typeof gsap==='undefined'){gc.destroy({children:true});return}
 
-  const th=c.th,sc=c.scr,dur=0.45*Math.min(1,c.fast);
+  const th=c.th,sc=c.scr,isCyber=S.visualStyle==='cyberpunk',dur=isCyber?0.12:0.45*Math.min(1,c.fast);
   let dx=0,dy=0,dScale=1,dAngle=0;
-  if(th==='slam'||th==='vhs-tracking')dx=(Math.random()<.5?-1:1)*sc.w*.35;
-  else if(th==='drop'||th==='gravity')dy=sc.h*.45;
-  else if(th==='rise'||th==='horizon')dy=-sc.h*.22;
-  else if(th==='zoom')dScale=1.6;
-  else if(th==='pop'||th==='spin'){dScale=0.4;dAngle=25;}
-  else if(th==='glitch-snap'||th==='rgb-split'){dx=(Math.random()<.5?-1:1)*90;dScale=1.15;}
+  if(!isCyber){
+    if(th==='slam'||th==='vhs-tracking')dx=(Math.random()<.5?-1:1)*sc.w*.35;
+    else if(th==='drop'||th==='gravity')dy=sc.h*.45;
+    else if(th==='rise'||th==='horizon')dy=-sc.h*.22;
+    else if(th==='zoom')dScale=1.6;
+    else if(th==='pop'||th==='spin'){dScale=0.4;dAngle=25;}
+    else if(th==='glitch-snap'||th==='rgb-split'){dx=(Math.random()<.5?-1:1)*90;dScale=1.15;}
+  }
 
   gsap.to(gc,{
     x:gc.x+dx,
@@ -1202,8 +1462,12 @@ function triggerWordFx(wn){
   if(typeof gsap!=='undefined'){
     gsap.to(tn,{alpha:1,duration:0.16,ease:'power2.out'});
     if(wn.ghostA&&wn.ghostB){
-      gsap.fromTo(wn.ghostA,{x:-14,alpha:0.95},{x:-3,alpha:0.45,duration:0.28,ease:'steps(3)'});
-      gsap.fromTo(wn.ghostB,{x:14,alpha:0.95},{x:3,alpha:0.45,duration:0.28,ease:'steps(3)'});
+      const peak=S.visualStyle==='cyberpunk'?.42:.34;
+      const tail=S.visualStyle==='cyberpunk'?.09:.12;
+      const spread=S.visualStyle==='cyberpunk'?8:6;
+      const settle=S.visualStyle==='cyberpunk'?2:3;
+      gsap.fromTo(wn.ghostA,{x:-spread,alpha:peak},{x:-settle,alpha:tail,duration:0.28,ease:'steps(3)'});
+      gsap.fromTo(wn.ghostB,{x:spread,alpha:peak},{x:settle,alpha:tail,duration:0.28,ease:'steps(3)'});
     }
   }else{
     tn.alpha=1;
@@ -1365,7 +1629,7 @@ function showClock(){
   retireGpuLine(S.cur);
   const words=[time,DAYS[d.getDay()],`${d.getDate()} ${MONTHS[d.getMonth()]}`];
   const sc=S.scene;
-  const mainF=S.visualStyle==='synthwave'?'f-synth':S.visualStyle==='cyberpunk'?'f-cyber':'f-cond';
+  const mainF=S.visualStyle==='synthwave'?'f-synth':S.visualStyle==='cyberpunk'?'f-cyber':S.visualStyle==='brainrot'?'f-brain':'f-cond';
   const m=measure(words[0],mainF),fs=Math.min(100*sc.w*.58/m.w,100*sc.h*.52/m.h),th=m.h*fs/100;
   const dfs=Math.min(sc.h*.1,100*sc.w*.4/measure(words[1],'f-serif').w);
   const mfs=Math.min(sc.h*.04,100*sc.w*.5/measure(words[2],'f-mono').w);
@@ -1378,7 +1642,7 @@ function showClock(){
   if(S.cur)S.cur.noHot=true;
 }
 
-/* ---------- Lyrics Fetching (Local First, then LRCLIB & NetEase) ---------- */
+/* ---------- Lyrics Fetching (Local first, then online providers) ---------- */
 const clean=s=>s.replace(/\s*[\(\[].*?[\)\]]/g,'').replace(/\s+-\s+.*$/,'').trim();
 const mainArtist=a=>a.split(/,|&|\sfeat\.?\s|\sft\.?\s|\sx\s/i)[0].trim();
 const norm=s=>clean(s||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
@@ -1418,10 +1682,72 @@ async function provNetease(){
     if(lr&&/\[\d+:\d+/.test(lr))out.push({...x,src:'netease',lrc:lr})}catch(e){}}
   return out;
 }
-const PROVIDERS={lrclib:provLrclib,netease:provNetease};
+function qrcToLrc(raw){
+  let text=raw||'';
+  try{
+    const doc=new DOMParser().parseFromString(text,'application/xml');
+    if(!doc.querySelector('parsererror')){
+      const parts=[...doc.querySelectorAll('*')].flatMap(el=>[el.textContent,...[...el.attributes].map(a=>a.value)]);
+      if(parts.some(x=>/\[\d+,\d+\]/.test(x)))text=parts.join('\n');
+    }else{
+      const attr=(raw||'').match(/LyricContent="([\s\S]*?)"/i);
+      text=attr?attr[1].replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&apos;/g,"'"):(raw||'').replace(/<\/?QrcInfos[^>]*>/gi,'');
+    }
+  }catch(e){}
+  const out=[];
+  for(const m of text.matchAll(/\[(\d+),(\d+)\]([^\[\r\n]*)/g)){
+    const start=+m[1],body=m[3].trim();if(!body)continue;
+    const words=[...body.matchAll(/\((\d+),(\d+)(?:,\d+)?\)([^()]*)/g)];
+    if(!words.length){out.push(`[${fmtT(start/1000)}]${body}`);continue}
+    const parts=[];
+    for(const w of words){let at=+w[1];if(at<start)at+=start;const value=w[3];if(value)parts.push(`<${fmtT(at/1000)}>${value}`)}
+    if(parts.length)out.push(`[${fmtT(start/1000)}]${parts.join('')}`);
+  }
+  return out.join('\n');
+}
+async function provBetterLyrics(provider){
+  const query=qs({s:clean(S.title),a:mainArtist(S.artist)})+`&al=${encodeURIComponent(S.album||'')}&d=${Math.round(S.dur||0)}`;
+  const r=await getJSON(`https://api.betterlyrics.org/${provider}/getLyrics?${query}`);
+  const raw=r.lyrics||r.syncedLyrics||'';
+  const lrc=provider==='qq'?qrcToLrc(raw):raw;
+  if(!/\[\d+:\d+/.test(lrc))return[];
+  return[{src:provider,title:r.trackName||S.title,artist:r.artistName||S.artist,dur:r.duration||S.dur,lrc}];
+}
+const provKugou=()=>provBetterLyrics('kugou'),provQq=()=>provBetterLyrics('qq');
+function musixmatchSubtitleToLrc(subtitle){
+  let raw=subtitle&&subtitle.subtitle_body;
+  if(typeof raw!=='string')return'';
+  raw=raw.trim();if(/\[\d{1,2}:\d{2}/.test(raw))return raw;
+  try{
+    const rows=JSON.parse(raw);if(!Array.isArray(rows))return'';
+    return rows.map(row=>{
+      const t=row.time||{},seconds=Number.isFinite(+t.total)?+t.total:(+t.minutes||0)*60+(+t.seconds||0)+(+t.hundredths||0)/100;
+      const text=String(row.text||'').trim();return text&&Number.isFinite(seconds)?`[${fmtT(seconds)}]${text}`:'';
+    }).filter(Boolean).join('\n');
+  }catch(e){return''}
+}
+async function provMusixmatch(){
+  const key=S.mmKey.trim();if(!key)return[];
+  const params={apikey:key,format:'json',q_track:clean(S.title),q_artist:mainArtist(S.artist),subtitle_format:'lrc'};
+  if(S.dur){params.f_subtitle_length=Math.round(S.dur);params.f_subtitle_length_max_deviation=15}
+  const r=await getJSON('https://api.musixmatch.com/ws/1.1/matcher.subtitle.get?'+qs(params),12000);
+  const subtitle=r&&r.message&&r.message.body&&r.message.body.subtitle;
+  if(!subtitle||!subtitle.subtitle_body)return[];
+  const lrc=musixmatchSubtitleToLrc(subtitle);if(!/\[\d+:\d+/.test(lrc))return[];
+  return[{src:'musixmatch',title:S.title,artist:S.artist,dur:S.dur,lrc,copyright:subtitle.lyrics_copyright||'© Musixmatch',pixelTrackingUrl:subtitle.pixel_tracking_url||''}];
+}
+const PROVIDERS={lrclib:provLrclib,musixmatch:provMusixmatch,netease:provNetease,kugou:provKugou,qq:provQq};
+const SOURCE_LABEL={lrclib:'LRCLIB',musixmatch:'Musixmatch',netease:'NetEase',kugou:'Kugou',qq:'QQ Music'};
+const SOURCE_ORDER={lrclib:0,musixmatch:1,netease:2,qq:3,kugou:4};
+function setGeniusSearch(visible){
+  const link=$('genius-link'),query=`${S.title} ${S.artist}`.trim();
+  link.style.display=visible&&query?'block':'none';
+  if(query)link.href='https://genius.com/search?q='+encodeURIComponent(query);
+  if(typeof reportHudBounds==='function')reportHudBounds();
+}
 
 async function fetchLyrics(){
-  const id=++S.reqId,key=S.artist+'|'+S.title;S.lines=[];S.idx=-99;S.src='';resetSync(key);
+  const id=++S.reqId,key=S.artist+'|'+S.title;S.lines=[];S.idx=-99;S.src='';S.copyright='';$('mm-tracking').removeAttribute('src');setGeniusSearch(false);resetSync(key);
   if(window.__klLocalLrc&&window.__klLocalLrc.lrc){
     const lines=parseLRC(window.__klLocalLrc.lrc);
     if(lines.length>2){
@@ -1430,17 +1756,20 @@ async function fetchLyrics(){
       return;
     }
   }
+  if(S.provider==='genius'){
+    status('Genius song search');setGeniusSearch(true);return;
+  }
   status('finding lyrics…');
   await new Promise(r=>setTimeout(r,650));if(id!==S.reqId)return;
   const names=S.provider!=='auto'&&PROVIDERS[S.provider]?[S.provider]:Object.keys(PROVIDERS);
   const res=await Promise.allSettled(names.map(n=>PROVIDERS[n]()));if(id!==S.reqId)return;
   const cands=res.flatMap(r=>r.status==='fulfilled'?r.value:[]).map(c=>({...c,score:scoreCand(c)}))
     .map(c=>({...c,word:/<\d+:\d+/.test(c.lrc)}))
-    .filter(c=>c.score>3.2).sort((a,b)=>(Math.round(b.score*2)-Math.round(a.score*2))||(b.word-a.word)||(a.src==='lrclib'?-1:1));
+    .filter(c=>c.score>3.2).sort((a,b)=>(Math.round(b.score*2)-Math.round(a.score*2))||(b.word-a.word)||((SOURCE_ORDER[a.src]??9)-(SOURCE_ORDER[b.src]??9)));
   for(const c of cands){const lines=parseLRC(c.lrc);if(lines.length>2){
-    S.src=c.src+(lines.some(l=>l.wt)?' · word-synced':'');S.lines=prepLines(lines);S.idx=-99;status(S.src);
+    S.copyright=c.copyright||'';if(c.pixelTrackingUrl)$('mm-tracking').src=c.pixelTrackingUrl.replace(/^http:/,'https:');S.src=(SOURCE_LABEL[c.src]||c.src)+(lines.some(l=>l.wt)?' · word-synced':'');S.lines=prepLines(lines);S.idx=-99;status(S.src);
     return;}}
-  status('no synced lyrics');
+  status('no synced lyrics');setGeniusSearch(true);
 }
 
 /* ---------- Album Art & Color Extraction ---------- */
@@ -1502,6 +1831,7 @@ function applyBgMode(m){
 function onAudio(a){
   if(!a||!(a.length>=1))return;
   const band=(lo,hi)=>{let v=0;for(let k=lo;k<hi;k++)v+=(a[k]||0)+(a[64+k]||0);return v/((hi-lo)*2)};
+  AU.bands=Array.from({length:12},(_,i)=>band(Math.floor(i*64/12),Math.floor((i+1)*64/12)));
   const rl=band(0,5),rm=band(8,30),rh=band(36,63),rt=band(0,63),now=performance.now();
   const P=AU.pk||(AU.pk={l:.001,m:.001,h:.001,t:.001});
   const dk=S.playing?1:0;
@@ -1527,6 +1857,12 @@ function onGpuTick(ticker){
     const t=now/1000;
     const cw=GPU.app.screen.width,ch=GPU.app.screen.height;
 
+    if(now>=STYLE_UI.nextUpdate){
+      STYLE_UI.nextUpdate=now+250;
+      updateStyleInterface(now);
+    }
+    pulseThemeSignal(now);
+
     if(S.bgMode==='drift'&&S.playing&&!S.low){
       GPU.bgSprite.x=cw/2+Math.sin(t*0.18)*cw*0.03;
       GPU.bgSprite.y=ch/2+Math.cos(t*0.14)*ch*0.025;
@@ -1544,7 +1880,7 @@ function onGpuTick(ticker){
 
     // Cyberpunk CRT scanline roll & micro-glitch jitter
     if(S.visualStyle==='cyberpunk'){
-      GPU.scanlines.tilePosition.y=(GPU.scanlines.tilePosition.y+dt*28)%4;
+      GPU.scanlines.tilePosition.y=S.low?0:(GPU.scanlines.tilePosition.y+dt*28)%4;
       GPU.glitchTimer-=dt;
       if(GPU.glitchTimer<=0&&!S.low){
         GPU.glitchTimer=rnd(0.25,1.8);
@@ -1679,7 +2015,7 @@ function layout(){
 function reportHudBounds(){
   const bridge=window.chrome&&window.chrome.webview;
   if(!bridge)return;
-  const buttons=Array.from(document.querySelectorAll('#style-bar button,#sync button')).map(b=>{
+  const buttons=Array.from(document.querySelectorAll('#style-bar button,#sync button,#genius-link')).map(b=>{
     const r=b.getBoundingClientRect();
     return{left:r.left,top:r.top,right:r.right,bottom:r.bottom};
   });
@@ -1705,11 +2041,17 @@ $('sync').addEventListener('click',e=>{
 });
 
 function setTrack(title,artist,album){
-  if(!title)return;
-  const changed=title!==S.title||artist!==S.artist;
-  S.title=title||'';S.artist=artist||'';S.album=album||'';
+  const nextTitle=title||'',nextArtist=artist||'',nextAlbum=album||'';
+  const changed=nextTitle!==S.title||nextArtist!==S.artist||nextAlbum!==S.album;
+  S.title=nextTitle;S.artist=nextArtist;S.album=nextAlbum;
   if(!changed)return;
   $('t').textContent=S.title;$('a').textContent=S.artist;
+  if(!S.title){
+    ++S.reqId;S.lines=[];S.idx=-99;S.src='';resetSync('');
+    if(GPU.tickerText)GPU.tickerText.text='';
+    status('GPU READY · WAITING FOR MUSIC');
+    return;
+  }
   if(GPU.tickerText){
     const one=(S.title+' — ').toUpperCase();
     GPU.tickerText.style.fontSize=Math.round((S.scene&&S.scene.h||GPU.app.screen.height)*0.23);
@@ -1747,7 +2089,8 @@ window.wallpaperPropertyListener={applyUserProperties(p){
       hype:{theme:'energetic',layout:'auto',chaos:.6,react:1,carry:true,style:'default'},
       chaos:{theme:'mixed',layout:'auto',chaos:1,react:.9,carry:true,style:'default'},
       synthwave:{theme:'mixed',layout:'auto',chaos:.35,react:.75,carry:true,style:'synthwave'},
-      cyberpunk:{theme:'energetic',layout:'auto',chaos:.65,react:.95,carry:true,style:'cyberpunk'}}[p.preset.value];
+      cyberpunk:{theme:'energetic',layout:'auto',chaos:.65,react:.95,carry:true,style:'cyberpunk'},
+      brainrot:{theme:'energetic',layout:'auto',chaos:.82,react:1,carry:false,style:'brainrot'}}[p.preset.value];
     if(P){S.theme=P.theme;S.layout=P.layout;S.chaos=P.chaos;S.react=P.react;S.carry=P.carry;if(P.bg)applyBgMode(P.bg);if(P.style)setVisualStyle(P.style);S.idx=-99}}}catch(e){}
   try{if(p.bgmode)applyBgMode(p.bgmode.value);}catch(e){}
   try{if(p.lowpower){S.low=p.lowpower.value}}catch(e){}
@@ -1757,7 +2100,8 @@ window.wallpaperPropertyListener={applyUserProperties(p){
   try{if(p.reactivity)S.react=Math.max(0,Math.min(2,(+p.reactivity.value||0)/100));}catch(e){}
   try{if(p.flashes)S.flashes=p.flashes.value;}catch(e){}
   try{if(p.clock24){S.clock24=p.clock24.value;S.clockKey=''}}catch(e){}
-  try{if(p.provider&&p.provider.value!==S.provider){S.provider=PROVIDERS[p.provider.value]?p.provider.value:'auto';if(S.title)fetchLyrics()}}catch(e){}
+  try{if(p.provider&&p.provider.value!==S.provider){const v=p.provider.value;S.provider=(PROVIDERS[v]||v==='genius')?v:'auto';if(S.title)fetchLyrics()}}catch(e){}
+  try{if(p.mmkey){const key=String(p.mmkey.value||'');if(key!==S.mmKey){S.mmKey=key;if(S.title&&(S.provider==='auto'||S.provider==='musixmatch'))fetchLyrics()}}}catch(e){}
   try{if(p.showinfo){S.showInfo=p.showinfo.value;re=true}}catch(e){}
   try{if(p.hudlift)root.style.setProperty('--hudlift',Math.max(0,Math.min(.3,(+p.hudlift.value||0)/100)))}catch(e){}
   try{if(p.layoutmode){S.layoutMode=p.layoutmode.value;re=true}}catch(e){}

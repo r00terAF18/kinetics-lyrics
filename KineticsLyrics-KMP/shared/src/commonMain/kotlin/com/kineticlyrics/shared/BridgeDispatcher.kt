@@ -94,6 +94,8 @@ class BridgeDispatcher(private val evaluateJs: (String) -> Unit) {
             put("accent", prop(JsonPrimitive(s.accent)))
             put("invert", prop(JsonPrimitive(s.invert)))
             put("provider", prop(JsonPrimitive(s.provider)))
+            put("mmkey", prop(JsonPrimitive(s.musixmatchApiKey)))
+            put("style", prop(JsonPrimitive(s.visualStyle)))
             put("offset", prop(JsonPrimitive(s.offsetMs)))
             put("autosync", prop(JsonPrimitive(s.autoSync)))
             put("reactivity", prop(JsonPrimitive(s.reactivity)))

@@ -20,6 +20,7 @@ public sealed class WallpaperSettings
     public string Accent { get; set; } = "1 0.3 0.43";
     public bool Invert { get; set; } = false;
     public string Provider { get; set; } = "auto";
+    public string MusixmatchApiKey { get; set; } = "";
     public int Offset { get; set; } = 0;
     public bool AutoSync { get; set; } = false;
     public int Reactivity { get; set; } = 60;
@@ -106,6 +107,7 @@ public sealed class WallpaperSettings
             ["accent"] = new { value = Accent },
             ["invert"] = new { value = Invert },
             ["provider"] = new { value = Provider },
+            ["mmkey"] = new { value = MusixmatchApiKey },
             ["offset"] = new { value = Offset },
             ["autosync"] = new { value = AutoSync },
             ["reactivity"] = new { value = Reactivity },

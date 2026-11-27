@@ -53,6 +53,10 @@ class MainActivity : Activity() {
         }
         root.addView(statusView)
 
+        addButton(root, "Wallpaper Settings", accent = true) {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
         addButton(root, "1. Grant Audio & Storage Permissions") {
             val perms = mutableListOf(Manifest.permission.RECORD_AUDIO)
             if (Build.VERSION.SDK_INT >= 33) perms.add(Manifest.permission.READ_MEDIA_AUDIO)
@@ -84,6 +88,7 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        WallpaperSettingsStore.scanMusicLibrary(this)
         refreshStatus()
     }
 

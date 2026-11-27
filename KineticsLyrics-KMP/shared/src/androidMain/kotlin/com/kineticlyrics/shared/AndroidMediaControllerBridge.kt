@@ -1,5 +1,6 @@
 package com.kineticlyrics.shared
 
+import aman.taglib.TagLib
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
@@ -13,6 +14,7 @@ import android.os.SystemClock
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -28,6 +30,8 @@ object AndroidMediaBridge : PlatformMediaSource {
 
     private var visualizer: Visualizer? = null
     private val fftBins = FloatArray(128)
+    private var scanVersion = 0
+    private var initializedFolderKey = ""
 
     private var title = ""
     private var artist = ""
@@ -42,10 +46,16 @@ object AndroidMediaBridge : PlatformMediaSource {
     private var lastTrackKey = ""
 
     fun init(context: Context) {
+        val saved = context.getSharedPreferences("kinetic_wallpaper_settings", Context.MODE_PRIVATE)
+            .getStringSet("music_folders", null)?.toList().orEmpty()
         val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
-        if (musicDir != null && musicDir.exists()) {
-            Thread { scanMusicFolders(listOf(musicDir.absolutePath)) }.start()
+        val folders = saved.ifEmpty { listOfNotNull(musicDir?.absolutePath) }
+        val key = folders.joinToString("|")
+        synchronized(lock) {
+            if (key == initializedFolderKey) return
+            initializedFolderKey = key
         }
+        Thread { scanMusicFolders(folders) }.start()
     }
 
     override fun start() {
@@ -98,6 +108,7 @@ object AndroidMediaBridge : PlatformMediaSource {
     override fun getFftBins(): FloatArray = synchronized(lock) { fftBins.copyOf() }
 
     override fun scanMusicFolders(folders: List<String>) {
+        val version = synchronized(lock) { ++scanVersion }
         val found = mutableListOf<LocalTrack>()
         for (folder in folders) {
             val root = File(folder)
@@ -112,8 +123,12 @@ object AndroidMediaBridge : PlatformMediaSource {
                 }
             }
         }
-        tracks.clear()
-        tracks.addAll(found)
+        synchronized(lock) {
+            if (version != scanVersion) return
+            tracks.clear()
+            tracks.addAll(found)
+            initializedFolderKey = folders.joinToString("|")
+        }
     }
 
     fun updateFromController(controller: MediaController?) {
@@ -163,12 +178,25 @@ object AndroidMediaBridge : PlatformMediaSource {
 
                 val matched = LocalLyricsMatcher.bestMatch(tracks, t, a, alb, durationSec)
                 if (matched != null) {
-                    val lrcFile = File(matched.path.substringBeforeLast('.') + ".lrc")
-                    if (lrcFile.exists()) {
-                        val content = runCatching { lrcFile.readText() }.getOrNull()
-                        if (!content.isNullOrBlank() && LocalLyricsMatcher.hasTimestamps(content)) {
-                            localRawLrc = content
-                            localSource = "Local .lrc"
+                    val embedded = runCatching { TagLib.getMetadata(matched.path)["LYRICS"] }.getOrNull()
+                    val embeddedLrc = normalizeLocalLyrics(embedded, durationSec)
+                    if (embeddedLrc != null) {
+                        localRawLrc = embeddedLrc
+                        localSource = "Embedded Tags" + if (LocalLyricsMatcher.hasTimestamps(embedded.orEmpty())) "" else " · estimated timing"
+                    } else {
+                        val audio = File(matched.path)
+                        for (extension in listOf("lrc", "txt")) {
+                            val sidecar = File(audio.parentFile, "${audio.nameWithoutExtension}.$extension")
+                            if (sidecar.exists()) {
+                                val content = runCatching { sidecar.readText() }.getOrNull()
+                                val sidecarLrc = normalizeLocalLyrics(content, durationSec)
+                                if (sidecarLrc != null) {
+                                    localRawLrc = sidecarLrc
+                                    localSource = if (extension == "lrc") "Local .lrc" else "Local .txt"
+                                    if (!LocalLyricsMatcher.hasTimestamps(content.orEmpty())) localSource += " · estimated timing"
+                                    break
+                                }
+                            }
                         }
                     }
                 }
@@ -200,5 +228,24 @@ object AndroidMediaBridge : PlatformMediaSource {
             scaled.compress(Bitmap.CompressFormat.JPEG, 82, out)
             "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
         }.getOrNull()
+    }
+
+    private fun normalizeLocalLyrics(raw: String?, durationSeconds: Double): String? {
+        if (raw.isNullOrBlank()) return null
+        if (LocalLyricsMatcher.hasTimestamps(raw)) return raw
+        val lines = raw.lineSequence().map { it.trim() }
+            .filter { it.isNotEmpty() && !it.matches(Regex("(?i)^\\[(ar|ti|al|by|offset|re|ve):.*")) }
+            .toList()
+        if (lines.size < 3) return null
+
+        val span = if (durationSeconds > lines.size * 0.8) durationSeconds else lines.size * 4.0
+        val step = span / lines.size
+        return lines.mapIndexed { index, line ->
+            val centiseconds = kotlin.math.round(index * step * 100).toLong()
+            val minutes = centiseconds / 6000
+            val seconds = centiseconds % 6000 / 100
+            val fraction = centiseconds % 100
+            "[%02d:%02d.%02d]%s".format(Locale.US, minutes, seconds, fraction, line)
+        }.joinToString("\n")
     }
 }

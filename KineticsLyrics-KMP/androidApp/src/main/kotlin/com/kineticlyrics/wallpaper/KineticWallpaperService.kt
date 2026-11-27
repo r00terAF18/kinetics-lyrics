@@ -2,10 +2,13 @@ package com.kineticlyrics.wallpaper
 
 import android.app.Presentation
 import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.service.wallpaper.WallpaperService
@@ -14,6 +17,7 @@ import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.View
 import android.webkit.WebView
+import android.webkit.WebResourceRequest
 import android.webkit.WebViewClient
 import com.kineticlyrics.shared.AndroidMediaBridge
 import com.kineticlyrics.shared.BridgeDispatcher
@@ -32,6 +36,9 @@ class KineticWallpaperService : WallpaperService() {
         private var webView: WebView? = null
         private var pageLoaded = false
         private var isVisible = false
+        private val settingsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            handler.post { if (pageLoaded) pushCurrentSettings() }
+        }
 
         private val dispatcher = BridgeDispatcher { js ->
             if (pageLoaded) {
@@ -52,6 +59,8 @@ class KineticWallpaperService : WallpaperService() {
         override fun onCreate(surfaceHolder: SurfaceHolder?) {
             super.onCreate(surfaceHolder)
             AndroidMediaBridge.init(service.applicationContext)
+            service.getSharedPreferences("kinetic_wallpaper_settings", Context.MODE_PRIVATE)
+                .registerOnSharedPreferenceChangeListener(settingsListener)
             setTouchEventsEnabled(true)
         }
 
@@ -92,6 +101,7 @@ class KineticWallpaperService : WallpaperService() {
             if (visible) {
                 webView?.onResume()
                 AndroidMediaBridge.start()
+                if (pageLoaded) pushCurrentSettings()
                 handler.post(tickRunnable)
             } else {
                 AndroidMediaBridge.stop()
@@ -112,6 +122,18 @@ class KineticWallpaperService : WallpaperService() {
             AndroidMediaBridge.stop()
             tearDownPresentation()
             super.onSurfaceDestroyed(holder)
+        }
+
+        override fun onDestroy() {
+            service.getSharedPreferences("kinetic_wallpaper_settings", Context.MODE_PRIVATE)
+                .unregisterOnSharedPreferenceChangeListener(settingsListener)
+            handler.removeCallbacks(tickRunnable)
+            tearDownPresentation()
+            super.onDestroy()
+        }
+
+        private fun pushCurrentSettings() {
+            dispatcher.pushSettings(WallpaperSettingsStore.load(service))
         }
 
         private fun tearDownPresentation() {
@@ -141,6 +163,22 @@ class KineticWallpaperService : WallpaperService() {
                     mediaPlaybackRequiresUserGesture = false
                 }
                 webViewClient = object : WebViewClient() {
+                    private fun openGenius(uri: Uri): Boolean {
+                        val host = uri.host.orEmpty().lowercase()
+                        if (uri.scheme != "https" || (host != "genius.com" && !host.endsWith(".genius.com"))) return false
+                        runCatching {
+                            service.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }
+                        return true
+                    }
+
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean =
+                        request?.url?.let { openGenius(it) } ?: false
+
+                    @Suppress("DEPRECATION")
+                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean =
+                        url?.let { runCatching { openGenius(Uri.parse(it)) }.getOrDefault(false) } ?: false
+
                     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                         super.onPageStarted(view, url, favicon)
                         view?.evaluateJavascript(BridgeScript.JS, null)
@@ -150,6 +188,7 @@ class KineticWallpaperService : WallpaperService() {
                         super.onPageFinished(view, url)
                         view?.evaluateJavascript(BridgeScript.JS, null)
                         pageLoaded = true
+                        pushCurrentSettings()
                     }
                 }
             }

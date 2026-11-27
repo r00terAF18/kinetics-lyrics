@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Net;
+using System.Xml.Linq;
 
 namespace KineticLyrics;
 
@@ -83,37 +85,67 @@ public static partial class LyricsResolver
         rawLrc = "";
         if (track is null || !File.Exists(track.Path)) return false;
 
-        // 1. Check .lrc sidecar file next to audio file first (supports enhanced word-synced <mm:ss.xx> tags)
-        var sidecar = Path.ChangeExtension(track.Path, ".lrc");
-        try
-        {
-            if (File.Exists(sidecar))
-            {
-                var text = File.ReadAllText(sidecar);
-                if (LineTimestampRegex().IsMatch(text))
-                {
-                    source = "Local .lrc";
-                    rawLrc = text;
-                    return true;
-                }
-            }
-        }
-        catch { }
-
-        // 2. Check embedded lyrics tag in audio file (.flac, .mp3, .m4a, .ogg, .opus)
+        // Embedded tags take precedence over an adjacent sidecar.
+        double duration = 0;
         try
         {
             using var audio = TagLib.File.Create(track.Path);
-            if (!string.IsNullOrWhiteSpace(audio.Tag.Lyrics) && LineTimestampRegex().IsMatch(audio.Tag.Lyrics))
+            duration = audio.Properties.Duration.TotalSeconds;
+            var normalized = NormalizeLocalLyrics(audio.Tag.Lyrics, duration);
+            if (normalized is not null)
             {
                 source = "Embedded Tags";
-                rawLrc = audio.Tag.Lyrics;
+                rawLrc = normalized;
+                if (!LineTimestampRegex().IsMatch(audio.Tag.Lyrics ?? "")) source += " · estimated timing";
                 return true;
             }
         }
         catch { }
 
+        // Sidecars remain available offline when the audio file has no usable embedded lyrics.
+        foreach (var extension in new[] { ".lrc", ".txt" })
+        {
+            var sidecar = Path.ChangeExtension(track.Path, extension);
+            try
+            {
+                if (!File.Exists(sidecar)) continue;
+                var text = File.ReadAllText(sidecar);
+                var normalized = NormalizeLocalLyrics(text, duration);
+                if (normalized is not null)
+                {
+                    source = extension == ".lrc" ? "Local .lrc" : "Local .txt";
+                    rawLrc = normalized;
+                    if (!LineTimestampRegex().IsMatch(text)) source += " · estimated timing";
+                    return true;
+                }
+            }
+            catch { }
+        }
+
         return false;
+    }
+
+    private static string? NormalizeLocalLyrics(string? raw, double duration)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        if (LineTimestampRegex().IsMatch(raw)) return raw;
+
+        var lines = raw.Split('\n')
+            .Select(line => line.Trim().Trim('\r'))
+            .Where(line => line.Length > 0 && !Regex.IsMatch(line, @"^\[(ar|ti|al|by|offset|re|ve):", RegexOptions.IgnoreCase))
+            .ToList();
+        if (lines.Count < 3) return null;
+
+        var span = duration > lines.Count * 0.8 ? duration : lines.Count * 4.0;
+        var step = span / lines.Count;
+        return string.Join("\n", lines.Select((line, index) =>
+        {
+            var centiseconds = (long)Math.Round(index * step * 100, MidpointRounding.AwayFromZero);
+            var minutes = centiseconds / 6000;
+            var seconds = centiseconds % 6000 / 100;
+            var fraction = centiseconds % 100;
+            return $"[{minutes:00}:{seconds:00}.{fraction:00}]{line}";
+        }));
     }
 
     public static async Task<Lyrics?> ResolveAsync(Track? track, string title, string artist, string album, double duration, CancellationToken ct)
@@ -148,7 +180,9 @@ public static partial class LyricsResolver
         var tasks = new List<Task<List<Candidate>>>
         {
             QueryLrclibAsync(title, artist, album, duration, ct),
-            QueryNeteaseAsync(title, artist, duration, ct)
+            QueryNeteaseAsync(title, artist, duration, ct),
+            QueryBetterLyricsAsync("kugou", title, artist, album, duration, ct),
+            QueryBetterLyricsAsync("qq", title, artist, album, duration, ct)
         };
 
         await Task.WhenAll(tasks);
@@ -158,7 +192,7 @@ public static partial class LyricsResolver
             .Where(x => x.Score > 2.8)
             .OrderByDescending(x => Math.Round(x.Score * 2))
             .ThenByDescending(x => x.Candidate.Lrc.Contains('<'))
-            .ThenBy(x => x.Candidate.Source == "LRCLIB" ? 0 : 1)
+            .ThenBy(x => SourcePriority(x.Candidate.Source))
             .Select(x => x.Candidate)
             .FirstOrDefault();
 
@@ -266,6 +300,98 @@ public static partial class LyricsResolver
         catch when (!ct.IsCancellationRequested) { }
         return results;
     }
+
+    private static async Task<List<Candidate>> QueryBetterLyricsAsync(string provider, string title, string artist, string album, double duration, CancellationToken ct)
+    {
+        var results = new List<Candidate>();
+        try
+        {
+            var query = new Dictionary<string, string>
+            {
+                ["s"] = CleanTitle(title),
+                ["a"] = MainArtist(artist),
+                ["al"] = album,
+                ["d"] = duration > 0 ? Math.Round(duration).ToString(CultureInfo.InvariantCulture) : "0"
+            };
+            var qs = string.Join("&", query.Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value)}"));
+            using var resp = await Http.GetAsync($"https://api.betterlyrics.org/{provider}/getLyrics?{qs}", ct);
+            if (!resp.IsSuccessStatusCode) return results;
+
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("lyrics", out var lyricsEl) || lyricsEl.ValueKind != JsonValueKind.String)
+                return results;
+            var raw = lyricsEl.GetString() ?? "";
+            var lrc = provider == "qq" ? ConvertQrcToLrc(raw) : raw;
+            if (!LineTimestampRegex().IsMatch(lrc)) return results;
+            results.Add(new Candidate(provider == "qq" ? "QQ Music" : "Kugou", title, artist, duration, lrc));
+        }
+        catch when (!ct.IsCancellationRequested) { }
+        return results;
+    }
+
+    private static string ConvertQrcToLrc(string raw)
+    {
+        string text = raw;
+        try
+        {
+            var xml = XDocument.Parse(text);
+            text = string.Join("\n", xml.DescendantNodes().OfType<XText>().Select(x => x.Value)
+                .Concat(xml.Descendants().Attributes().Select(x => x.Value)));
+        }
+        catch
+        {
+            var lyricAttribute = Regex.Match(raw, "LyricContent=\"([^\"]*)\"", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            text = lyricAttribute.Success
+                ? WebUtility.HtmlDecode(lyricAttribute.Groups[1].Value)
+                : Regex.Replace(raw, "</?QrcInfos[^>]*>", "\n", RegexOptions.IgnoreCase);
+        }
+
+        var lines = new List<string>();
+        foreach (Match line in Regex.Matches(text, @"\[(\d+),(\d+)\]([^\[\r\n]*)"))
+        {
+            if (!long.TryParse(line.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var startMs)) continue;
+            var body = line.Groups[3].Value.Trim();
+            if (string.IsNullOrWhiteSpace(body)) continue;
+
+            var words = Regex.Matches(body, @"\((\d+),(\d+)(?:,\d+)?\)([^()]*)");
+            if (words.Count == 0)
+            {
+                lines.Add($"[{FormatLrcTime(startMs)}]{body}");
+                continue;
+            }
+
+            var chunks = new List<string>();
+            foreach (Match word in words)
+            {
+                if (!long.TryParse(word.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var wordMs)) continue;
+                if (wordMs < startMs) wordMs += startMs;
+                var value = word.Groups[3].Value;
+                if (value.Length == 0) continue;
+                chunks.Add($"<{FormatLrcTime(wordMs)}>{value}");
+            }
+            if (chunks.Count > 0)
+                lines.Add($"[{FormatLrcTime(startMs)}]{string.Concat(chunks)}");
+        }
+        return string.Join("\n", lines);
+    }
+
+    private static string FormatLrcTime(long milliseconds)
+    {
+        var centiseconds = Math.Max(0, milliseconds) / 10;
+        var minutes = centiseconds / 6000;
+        var seconds = centiseconds % 6000 / 100;
+        var fraction = centiseconds % 100;
+        return $"{minutes:00}:{seconds:00}.{fraction:00}";
+    }
+
+    private static int SourcePriority(string source) => source switch
+    {
+        "LRCLIB" => 0,
+        "NetEase" => 1,
+        "QQ Music" => 2,
+        "Kugou" => 3,
+        _ => 4
+    };
 
     private static IReadOnlyList<LyricLine> PrepareLines(List<(double Time, string Text, List<(double Time, string Text)>? WordTimes)> src)
     {

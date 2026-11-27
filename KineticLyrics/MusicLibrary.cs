@@ -8,7 +8,10 @@ public record Track(string Path, string Title, string Artist, string Album, doub
 public sealed class MusicLibrary : IDisposable
 {
     private readonly SqliteConnection db;
+    private readonly object _dbLock = new();
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase) { ".flac", ".mp3", ".m4a", ".ogg", ".opus", ".wav", ".wma" };
+
+    public event Action? ScanCompleted;
 
     public MusicLibrary(string path)
     {
@@ -21,6 +24,12 @@ public sealed class MusicLibrary : IDisposable
 
     public void Scan(string folder)
     {
+        ScanCore(folder);
+        ScanCompleted?.Invoke();
+    }
+
+    private void ScanCore(string folder)
+    {
         int scanned = 0, changed = 0, errors = 0;
         var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint };
         try
@@ -32,25 +41,31 @@ public sealed class MusicLibrary : IDisposable
                 try
                 {
                     var info = new FileInfo(path);
-                    using var check = db.CreateCommand();
-                    check.CommandText = "SELECT size, modified FROM tracks WHERE path=$p";
-                    check.Parameters.AddWithValue("$p", path);
-                    using var reader = check.ExecuteReader();
-                    bool same = reader.Read() && reader.GetInt64(0) == info.Length && reader.GetInt64(1) == info.LastWriteTimeUtc.Ticks;
-                    reader.Close();
+                    bool same;
+                    lock (_dbLock)
+                    {
+                        using var check = db.CreateCommand();
+                        check.CommandText = "SELECT size, modified FROM tracks WHERE path=$p";
+                        check.Parameters.AddWithValue("$p", path);
+                        using var reader = check.ExecuteReader();
+                        same = reader.Read() && reader.GetInt64(0) == info.Length && reader.GetInt64(1) == info.LastWriteTimeUtc.Ticks;
+                    }
                     if (same) continue;
 
                     using var audio = TagLib.File.Create(path);
-                    using var cmd = db.CreateCommand();
-                    cmd.CommandText = "INSERT OR REPLACE INTO tracks VALUES ($p,$s,$m,$t,$a,$b,$d)";
-                    cmd.Parameters.AddWithValue("$p", path);
-                    cmd.Parameters.AddWithValue("$s", info.Length);
-                    cmd.Parameters.AddWithValue("$m", info.LastWriteTimeUtc.Ticks);
-                    cmd.Parameters.AddWithValue("$t", audio.Tag.Title ?? "");
-                    cmd.Parameters.AddWithValue("$a", audio.Tag.FirstPerformer ?? "");
-                    cmd.Parameters.AddWithValue("$b", audio.Tag.Album ?? "");
-                    cmd.Parameters.AddWithValue("$d", audio.Properties.Duration.TotalSeconds);
-                    cmd.ExecuteNonQuery();
+                    lock (_dbLock)
+                    {
+                        using var cmd = db.CreateCommand();
+                        cmd.CommandText = "INSERT OR REPLACE INTO tracks VALUES ($p,$s,$m,$t,$a,$b,$d)";
+                        cmd.Parameters.AddWithValue("$p", path);
+                        cmd.Parameters.AddWithValue("$s", info.Length);
+                        cmd.Parameters.AddWithValue("$m", info.LastWriteTimeUtc.Ticks);
+                        cmd.Parameters.AddWithValue("$t", audio.Tag.Title ?? "");
+                        cmd.Parameters.AddWithValue("$a", audio.Tag.FirstPerformer ?? "");
+                        cmd.Parameters.AddWithValue("$b", audio.Tag.Album ?? "");
+                        cmd.Parameters.AddWithValue("$d", audio.Properties.Duration.TotalSeconds);
+                        cmd.ExecuteNonQuery();
+                    }
                     changed++;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TagLib.CorruptFileException or TagLib.UnsupportedFormatException)
@@ -69,22 +84,46 @@ public sealed class MusicLibrary : IDisposable
 
     public void RemoveFolder(string folder)
     {
-        var prefix = System.IO.Path.GetFullPath(folder)
-            .TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
-            + System.IO.Path.DirectorySeparatorChar;
-        using var cmd = db.CreateCommand();
-        cmd.CommandText = "DELETE FROM tracks WHERE substr(path, 1, length($prefix)) COLLATE NOCASE = $prefix";
-        cmd.Parameters.AddWithValue("$prefix", prefix);
-        cmd.ExecuteNonQuery();
+        lock (_dbLock)
+        {
+            var prefix = System.IO.Path.GetFullPath(folder)
+                .TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+                + System.IO.Path.DirectorySeparatorChar;
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = "DELETE FROM tracks WHERE substr(path, 1, length($prefix)) COLLATE NOCASE = $prefix";
+            cmd.Parameters.AddWithValue("$prefix", prefix);
+            cmd.ExecuteNonQuery();
+        }
     }
 
     private static string Normalize(string s) => Regex.Replace(s.ToLowerInvariant(), @"[^\p{L}\p{N}]+", " ").Trim();
 
+    private static string[] ArtistCredits(string value) => Regex.Split(
+            value,
+            @"\s*(?:;|,|&|\+|/|\||\b(?:feat(?:uring)?|ft)\.?(?=\s|$)|\bwith\b|\bx\b)\s*",
+            RegexOptions.IgnoreCase)
+        .Select(Normalize)
+        .Where(part => part.Length > 0)
+        .Distinct(StringComparer.Ordinal)
+        .ToArray();
+
+    private static bool ArtistsOverlap(string first, string second)
+    {
+        var left = ArtistCredits(first);
+        var right = ArtistCredits(second);
+        return left.Length > 0 && right.Length > 0 && left.Intersect(right, StringComparer.Ordinal).Any();
+    }
+
     public Track? Match(string title, string artist, string album, double duration)
+    {
+        lock (_dbLock) return MatchCore(title, artist, album, duration);
+    }
+
+    private Track? MatchCore(string title, string artist, string album, double duration)
     {
         var t = Normalize(title);
         var a = Normalize(artist);
-        if (t.Length == 0 || a.Length == 0) return null;
+        if (t.Length == 0) return null;
 
         var matches = new List<(Track track, int score)>();
         using var cmd = db.CreateCommand();
@@ -93,15 +132,22 @@ public sealed class MusicLibrary : IDisposable
         while (r.Read())
         {
             var track = new Track(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetDouble(4));
-            if (Normalize(track.Title) != t || Normalize(track.Artist) != a || !File.Exists(track.Path)) continue;
+            if (Normalize(track.Title) != t || !File.Exists(track.Path)) continue;
+            bool artistMatch = a.Length > 0 && ArtistsOverlap(artist, track.Artist);
+            bool albumMatch = album.Length > 0 && Normalize(track.Album) == Normalize(album);
             var diff = Math.Abs(duration - track.Duration);
             if (duration > 0 && track.Duration > 0 && diff > 10) continue;
-            int score = (duration > 0 && track.Duration > 0 && diff <= 3 ? 2 : 0) + (album.Length > 0 && Normalize(track.Album) == Normalize(album) ? 1 : 0);
+            bool strongMetadataFallback = albumMatch && duration > 0 && track.Duration > 0 && diff <= 3;
+            if (!artistMatch && !strongMetadataFallback) continue;
+            int score = (artistMatch ? 4 : 0) + (duration > 0 && track.Duration > 0 && diff <= 3 ? 2 : 0) + (albumMatch ? 1 : 0);
             matches.Add((track, score));
         }
         var ordered = matches.OrderByDescending(x => x.score).ToList();
         return ordered.Count == 0 || (ordered.Count > 1 && ordered[0].score == ordered[1].score) ? null : ordered[0].track;
     }
 
-    public void Dispose() => db.Dispose();
+    public void Dispose()
+    {
+        lock (_dbLock) db.Dispose();
+    }
 }

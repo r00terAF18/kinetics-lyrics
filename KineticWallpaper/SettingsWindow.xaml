@@ -4,9 +4,8 @@
         Title="Kinetic Lyrics Settings"
         Width="780" Height="650" MinWidth="700" MinHeight="570"
         WindowStartupLocation="CenterScreen"
-        ShowInTaskbar="True"
-        Background="#101118" Foreground="#F4F1EA"
-        FontFamily="Segoe UI" FontSize="14">
+        ShowInTaskbar="True" Foreground="#F4F1EA"
+        FontFamily="Segoe UI" FontSize="14" Background="#FF1E202F" Topmost="True">
     <Window.Resources>
         <SolidColorBrush x:Key="PanelBrush" Color="#191B25" />
         <SolidColorBrush x:Key="AccentBrush" Color="#FF4D6D" />
@@ -62,7 +61,7 @@
         </StackPanel>
 
         <TabControl x:Name="SettingsTabs" Grid.Row="1" Background="#151720" BorderBrush="#30323E">
-            <TabItem Header="General">
+            <TabItem Header="General" Foreground="Black">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="18">
                         <TextBlock Text="Desktop" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12" />
@@ -82,12 +81,16 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Lyrics">
+            <TabItem Header="Lyrics" Foreground="Black">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="18">
                         <TextBlock Text="Lyrics source" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12" />
                         <TextBlock Text="Provider" />
                         <ComboBox x:Name="ProviderCombo" />
+                        <TextBlock Text="Embedded audio lyrics and matching .lrc/.txt sidecars are checked first. Automatic searches LRCLIB, Musixmatch, NetEase, QQ Music, and Kugou. Genius opens a song search when synced lyrics are unavailable." Foreground="#999BA7" TextWrapping="Wrap" Margin="0,2,0,10" />
+                        <TextBlock Text="Musixmatch API key (optional)" />
+                        <PasswordBox x:Name="MusixmatchKeyBox" MaxLength="256" />
+                        <TextBlock Text="Stored in this device's local settings and sent to Musixmatch for lyric requests." Foreground="#999BA7" TextWrapping="Wrap" Margin="0,2,0,10" />
                         <TextBlock Text="Global timing offset (milliseconds)" />
                         <TextBox x:Name="OffsetBox" MaxLength="7" ToolTip="Positive values show lyrics earlier; negative values show them later." />
                         <CheckBox x:Name="AutoSyncCheck" Content="Auto-sync lyrics to vocals (experimental)" />
@@ -96,7 +99,7 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Visuals">
+            <TabItem Header="Visuals" Foreground="Black">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="18">
                         <TextBlock Text="Style preset" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8" />
@@ -115,23 +118,38 @@
 
                             <TextBlock Text="Adjustments" FontSize="16" FontWeight="SemiBold" Margin="0,6,0,8" />
                             <StackPanel Margin="0,2,0,7">
-                                <DockPanel><TextBlock Text="Chaos" /><TextBlock x:Name="ChaosValue" DockPanel.Dock="Right" Foreground="#A7A9B4" /></DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Chaos" />
+                                    <TextBlock x:Name="ChaosValue" DockPanel.Dock="Right" Foreground="#A7A9B4" />
+                                </DockPanel>
                                 <Slider x:Name="ChaosSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" Tag="ChaosValue" />
                             </StackPanel>
                             <StackPanel Margin="0,2,0,7">
-                                <DockPanel><TextBlock Text="Camera movement" /><TextBlock x:Name="CameraAmountValue" DockPanel.Dock="Right" Foreground="#A7A9B4" /></DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Camera movement" />
+                                    <TextBlock x:Name="CameraAmountValue" DockPanel.Dock="Right" Foreground="#A7A9B4" />
+                                </DockPanel>
                                 <Slider x:Name="CameraAmountSlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" Tag="CameraAmountValue" />
                             </StackPanel>
                             <StackPanel Margin="0,2,0,7">
-                                <DockPanel><TextBlock Text="Background dim" /><TextBlock x:Name="DimValue" DockPanel.Dock="Right" Foreground="#A7A9B4" /></DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Background dim" />
+                                    <TextBlock x:Name="DimValue" DockPanel.Dock="Right" Foreground="#A7A9B4" />
+                                </DockPanel>
                                 <Slider x:Name="DimSlider" Minimum="0" Maximum="95" ValueChanged="Slider_ValueChanged" Tag="DimValue" />
                             </StackPanel>
                             <StackPanel Margin="0,2,0,7">
-                                <DockPanel><TextBlock Text="Beat reactivity" /><TextBlock x:Name="ReactivityValue" DockPanel.Dock="Right" Foreground="#A7A9B4" /></DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Beat reactivity" />
+                                    <TextBlock x:Name="ReactivityValue" DockPanel.Dock="Right" Foreground="#A7A9B4" />
+                                </DockPanel>
                                 <Slider x:Name="ReactivitySlider" Minimum="0" Maximum="100" ValueChanged="Slider_ValueChanged" Tag="ReactivityValue" />
                             </StackPanel>
                             <StackPanel Margin="0,2,0,7">
-                                <DockPanel><TextBlock Text="Raise HUD above the taskbar" /><TextBlock x:Name="HudLiftValue" DockPanel.Dock="Right" Foreground="#A7A9B4" /></DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Raise HUD above the taskbar" />
+                                    <TextBlock x:Name="HudLiftValue" DockPanel.Dock="Right" Foreground="#A7A9B4" />
+                                </DockPanel>
                                 <Slider x:Name="HudLiftSlider" Minimum="0" Maximum="30" ValueChanged="Slider_ValueChanged" Tag="HudLiftValue" />
                             </StackPanel>
 
@@ -149,7 +167,7 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Performance">
+            <TabItem Header="Performance" Foreground="Black">
                 <StackPanel Margin="18">
                     <TextBlock Text="Rendering" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12" />
                     <TextBlock Text="Frame rate" />
@@ -159,7 +177,7 @@
                 </StackPanel>
             </TabItem>
 
-            <TabItem Header="Music Library">
+            <TabItem Header="Music Library" Foreground="Black">
                 <Grid Margin="18">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />

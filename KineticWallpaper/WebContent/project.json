@@ -544,6 +544,14 @@
 					{
 						"label" : "NetEase",
 						"value" : "netease"
+					},
+					{
+						"label" : "Kugou",
+						"value" : "kugou"
+					},
+					{
+						"label" : "QQ Music",
+						"value" : "qq"
 					}
 				],
 				"order" : 118,

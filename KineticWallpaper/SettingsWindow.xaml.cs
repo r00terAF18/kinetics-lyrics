@@ -59,13 +59,15 @@ public partial class SettingsWindow : Window
         ], _settings.DisplayMode, "auto");
 
         SetOptions(ProviderCombo,
-        [new("Automatic", "auto"), new("LRCLIB", "lrclib"), new("NetEase", "netease")], _settings.Provider, "auto");
+        [new("Automatic", "auto"), new("LRCLIB", "lrclib"), new("NetEase", "netease"),
+            new("Musixmatch", "musixmatch"), new("Kugou", "kugou"), new("QQ Music", "qq"),
+            new("Genius search", "genius")], _settings.Provider, "auto");
 
         SetOptions(PresetCombo,
         [
             new("Custom", "custom"), new("Minimal", "minimal"), new("Calm", "calm"),
             new("Balanced", "balanced"), new("Hype", "hype"), new("Chaos", "chaos"),
-            new("Synthwave", "synthwave"), new("Cyberpunk", "cyberpunk")
+            new("Synthwave", "synthwave"), new("Cyberpunk", "cyberpunk"), new("🧠 Brainrot", "brainrot")
         ], _settings.Preset, "custom");
 
         SetOptions(LayoutCombo,
@@ -133,6 +135,7 @@ public partial class SettingsWindow : Window
         MonitorCombo.SelectedValue = NormalizeMonitor(_settings.TargetMonitor);
         DisplayModeCombo.SelectedValue = _settings.DisplayMode;
         ProviderCombo.SelectedValue = _settings.Provider;
+        MusixmatchKeyBox.Password = _settings.MusixmatchApiKey;
         PresetCombo.SelectedValue = _settings.Preset;
         LayoutCombo.SelectedValue = _settings.Layout;
         TransitionCombo.SelectedValue = _settings.Transition;
@@ -183,6 +186,7 @@ public partial class SettingsWindow : Window
             case "chaos": transition = "mixed"; layout = "auto"; chaos = 100; reactivity = 90; break;
             case "synthwave": transition = "mixed"; layout = "auto"; chaos = 35; reactivity = 75; break;
             case "cyberpunk": transition = "energetic"; layout = "auto"; chaos = 65; reactivity = 95; break;
+            case "brainrot": transition = "energetic"; layout = "auto"; chaos = 82; reactivity = 100; break;
             default: return;
         }
 
@@ -282,6 +286,7 @@ public partial class SettingsWindow : Window
         _settings.DisplayMode = Selected(DisplayModeCombo, "auto");
         _settings.Preset = Selected(PresetCombo, "custom");
         _settings.Provider = Selected(ProviderCombo, "auto");
+        _settings.MusixmatchApiKey = MusixmatchKeyBox.Password.Trim();
         _settings.Offset = offset;
         _settings.AutoSync = AutoSyncCheck.IsChecked == true;
         _settings.ShowInfo = ShowInfoCheck.IsChecked == true;

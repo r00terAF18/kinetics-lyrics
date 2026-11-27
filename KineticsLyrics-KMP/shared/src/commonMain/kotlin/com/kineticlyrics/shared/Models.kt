@@ -32,6 +32,8 @@ data class WallpaperSettings(
     val accent: String = "1 0.3 0.43",
     val invert: Boolean = false,
     val provider: String = "auto",
+    val musixmatchApiKey: String = "",
+    val visualStyle: String = "auto",
     val offsetMs: Int = 0,
     val autoSync: Boolean = false,
     val reactivity: Int = 60,

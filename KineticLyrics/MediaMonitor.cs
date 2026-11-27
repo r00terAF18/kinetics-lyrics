@@ -38,8 +38,14 @@ public sealed class MediaMonitor
     private string _status = "Waiting for media…";
     private string? _sessionKey;
     private int _requestVersion;
+    private int _libraryScanCompleted;
 
-    public MediaMonitor(MusicLibrary? library) => _library = library;
+    public MediaMonitor(MusicLibrary? library)
+    {
+        _library = library;
+        if (_library is not null)
+            _library.ScanCompleted += () => Interlocked.Exchange(ref _libraryScanCompleted, 1);
+    }
 
     public double CurrentPosition =>
         _basePos + (_isPlaying ? Stopwatch.GetElapsedTime(_baseTicks).TotalSeconds : 0) + _phaseCorrection;
@@ -59,6 +65,7 @@ public sealed class MediaMonitor
                 {
                     if (_sessionKey is not null)
                     {
+                        Interlocked.Increment(ref _requestVersion);
                         _sessionKey = null;
                         _title = "";
                         _artist = "";
@@ -98,6 +105,7 @@ public sealed class MediaMonitor
 
                 if (newKey != _sessionKey && !string.IsNullOrWhiteSpace(title))
                 {
+                    int reqId = Interlocked.Increment(ref _requestVersion);
                     _sessionKey = newKey;
                     _title = title;
                     _artist = artist;
@@ -119,11 +127,11 @@ public sealed class MediaMonitor
                     else
                     {
                         _status = "Searching lyrics…";
-                        int reqId = ++_requestVersion;
+                        double queryDuration = _duration;
                         _ = Task.Run(async () =>
                         {
-                            var resolved = await LyricsResolver.ResolveAsync(track, title, artist, album, _duration, ct);
-                            if (reqId != _requestVersion) return;
+                            var resolved = await LyricsResolver.ResolveAsync(track, title, artist, album, queryDuration, ct);
+                            if (reqId != Volatile.Read(ref _requestVersion)) return;
                             _lyrics = resolved;
                             _status = resolved is null
                                 ? "No synced lyrics"
@@ -131,9 +139,21 @@ public sealed class MediaMonitor
                         }, ct);
                     }
                 }
+
+                if (Interlocked.Exchange(ref _libraryScanCompleted, 0) != 0 &&
+                    _sessionKey is not null && _lyrics is null &&
+                    LyricsResolver.TryReadLocalLrc(_library?.Match(_title, _artist, _album, _duration), out var rescannedSource, out var rescannedLrc))
+                {
+                    Interlocked.Increment(ref _requestVersion);
+                    _localSource = rescannedSource;
+                    _localRawLrc = rescannedLrc;
+                    _lyrics = LyricsResolver.Parse(rescannedLrc, rescannedSource);
+                    _status = rescannedSource;
+                }
             }
             catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
             {
+                Interlocked.Increment(ref _requestVersion);
                 _sessionKey = null;
                 _isPlaying = false;
             }

@@ -28,4 +28,5 @@ android {
 dependencies {
     implementation(project(":shared"))
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 }
